@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Cor principal de ação: azul sóbrio, transmite confiança. */
+  --color-brand-50: #eef4ff;
+  --color-brand-100: #dae6ff;
+  --color-brand-200: #bdd3ff;
+  --color-brand-300: #90b6ff;
+  --color-brand-400: #5c8dfd;
+  --color-brand-500: #3666f8;
+  --color-brand-600: #2149ec;
+  --color-brand-700: #1a37d0;
+  --color-brand-800: #1b30a8;
+  --color-brand-900: #1c2f84;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+
+  /* Foco sempre visível para navegação por teclado. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+}

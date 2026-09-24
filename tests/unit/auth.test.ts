@@ -1,0 +1,63 @@
+import { describe, expect, it } from "vitest";
+import { generateTemporaryPassword, newPasswordSchema } from "@/features/auth/password";
+import { isValidUsername, normalizeUsername, usernameToAuthEmail } from "@/features/auth/username";
+import { safeRedirectPath } from "@/lib/safe-redirect";
+
+describe("username", () => {
+  it("normaliza espaços e maiúsculas", () => {
+    expect(normalizeUsername("  Luciane ")).toBe("luciane");
+  });
+
+  it.each(["luciane", "ana.paula", "joao_2", "m-s", "abc"])("aceita %s", (u) => {
+    expect(isValidUsername(u)).toBe(true);
+  });
+
+  it.each(["ab", "", ".ana", "ana paula", "ana@x", "ç", "a".repeat(33), "Ana"])("rejeita %s", (u) => {
+    expect(isValidUsername(u)).toBe(false);
+  });
+
+  it("gera e-mail sintético determinístico", () => {
+    expect(usernameToAuthEmail("Luciane", "login.meurecibo.internal")).toBe(
+      "luciane@login.meurecibo.internal",
+    );
+  });
+});
+
+describe("senha", () => {
+  it("senha temporária tem formato xxxx-xxxx-xxxx e passa na política", () => {
+    for (let i = 0; i < 200; i++) {
+      const password = generateTemporaryPassword();
+      expect(password).toMatch(/^[a-zA-Z2-9]{4}-[a-zA-Z2-9]{4}-[a-zA-Z2-9]{4}$/);
+      expect(newPasswordSchema.safeParse({ password, confirmPassword: password }).success).toBe(true);
+    }
+  });
+
+  it("senhas temporárias não se repetem", () => {
+    const set = new Set(Array.from({ length: 500 }, generateTemporaryPassword));
+    expect(set.size).toBe(500);
+  });
+
+  it("exige tamanho mínimo, letra, número e confirmação igual", () => {
+    const check = (password: string, confirmPassword = password) =>
+      newPasswordSchema.safeParse({ password, confirmPassword }).success;
+    expect(check("curta1")).toBe(false);
+    expect(check("somenteletras")).toBe(false);
+    expect(check("1234567890")).toBe(false);
+    expect(check("senhaforte123", "senhaforte124")).toBe(false);
+    expect(check("senhaforte123")).toBe(true);
+  });
+});
+
+describe("safeRedirectPath", () => {
+  it.each([
+    ["/recibos", "/recibos"],
+    ["/recibos?x=1", "/recibos?x=1"],
+    ["//evil.com", "/"],
+    ["/\\evil.com", "/"],
+    ["https://evil.com", "/"],
+    ["", "/"],
+    [null, "/"],
+  ])("%s → %s", (input, expected) => {
+    expect(safeRedirectPath(input)).toBe(expected);
+  });
+});
