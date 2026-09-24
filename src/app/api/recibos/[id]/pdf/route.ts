@@ -3,6 +3,7 @@ import { z } from "zod";
 import { writeAuditLog } from "@/features/audit/log";
 import { getSession } from "@/features/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { RATE_LIMIT_MESSAGE, withinRateLimit } from "@/lib/security/rate-limit";
 
 // Entrega o PDF salvo. Tudo pela sessão do usuário: a RLS decide se ele
 // pode ver o recibo e o arquivo. Nunca expõe URL pública do storage.
@@ -15,6 +16,10 @@ export async function GET(request: NextRequest, { params }: RouteContext<"/api/r
   const session = await getSession();
   if (!session || session.profile.status !== "active") {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401, headers: noStore });
+  }
+
+  if (!(await withinRateLimit("pdfDownload", session.userId))) {
+    return NextResponse.json({ error: RATE_LIMIT_MESSAGE }, { status: 429, headers: { ...noStore, "Retry-After": "60" } });
   }
 
   const { id } = await params;

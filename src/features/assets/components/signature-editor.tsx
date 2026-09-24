@@ -201,6 +201,9 @@ export function SignatureEditor({
     <input
       ref={inputRef}
       type="file"
+      // Acionado pelos botões visíveis; o rótulo serve a leitores de tela.
+      aria-label="Escolher foto da assinatura ou carimbo"
+      tabIndex={-1}
       accept="image/png,image/jpeg,image/webp"
       className="sr-only"
       onChange={(e) => e.target.files?.[0] && start(e.target.files[0], null)}

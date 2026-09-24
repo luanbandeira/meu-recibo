@@ -10,6 +10,7 @@ import { DEFAULT_SETTINGS } from "./document/constants";
 import { BLANK_TEMPLATE_CONTENT, DEFAULT_TEMPLATE_CONTENT } from "./document/default-template";
 import { templateContentSchema, templateSettingsSchema } from "./document/schema";
 import { extractVariables, knownKeys } from "./document/variables";
+import { RATE_LIMIT_MESSAGE, withinRateLimit } from "@/lib/security/rate-limit";
 
 const nameSchema = z.string().trim().min(1, "Dê um nome ao modelo.").max(100, "Use no máximo 100 caracteres.");
 const idSchema = z.uuid();
@@ -26,6 +27,7 @@ export type CreateTemplateState = { error?: string };
 
 export async function createTemplate(_prev: CreateTemplateState, formData: FormData): Promise<CreateTemplateState> {
   const { userId } = await requireOnboardedUser();
+  if (!(await withinRateLimit("templateCreate", userId))) return { error: RATE_LIMIT_MESSAGE };
   const name = nameSchema.safeParse(String(formData.get("name") ?? ""));
   if (!name.success) return { error: name.error.issues[0].message };
   const base = formData.get("base") === "blank" ? "blank" : "default";
@@ -51,6 +53,7 @@ export async function createTemplate(_prev: CreateTemplateState, formData: FormD
 
 export async function duplicateTemplate(id: string): Promise<{ ok: boolean }> {
   const { userId } = await requireOnboardedUser();
+  if (!(await withinRateLimit("templateCreate", userId))) return { ok: false };
   if (!idSchema.safeParse(id).success) return { ok: false };
   const supabase = await createClient();
   const { data: source } = await supabase
@@ -136,6 +139,7 @@ export async function saveTemplate(input: {
   settings: unknown;
 }): Promise<SaveTemplateResult> {
   const { userId } = await requireOnboardedUser();
+  if (!(await withinRateLimit("templateSave", userId))) return { ok: false, error: RATE_LIMIT_MESSAGE };
   if (
     !idSchema.safeParse(input.id).success ||
     !Number.isInteger(input.revision) ||

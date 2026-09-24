@@ -37,7 +37,7 @@ function VariableChip({ node, selected: isSelected, editor, updateAttributes }: 
       data-variable={key}
     >
       {entry?.label ?? (archivedLabel ? `${archivedLabel} (arquivado)` : `${key} (removido)`)}
-      {isDate && node.attrs.format === "long" && <span className="ml-1 opacity-70">(por extenso)</span>}
+      {isDate && node.attrs.format === "long" && <span className="ml-1 text-[0.9em] font-normal">(por extenso)</span>}
       {selected && isDate && (
         <span contentEditable={false} className="absolute left-0 top-full z-10 mt-1 flex gap-1 rounded-md bg-white p-1 text-xs shadow-md ring-1 ring-slate-200">
           {(["short", "long"] as const).map((format) => (

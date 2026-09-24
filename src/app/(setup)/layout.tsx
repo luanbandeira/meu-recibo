@@ -9,7 +9,7 @@ export default async function SetupLayout({ children }: { children: React.ReactN
   return (
     <>
       <AppHeader homeHref="/onboarding" userLabel={profile.display_name} />
-      <main className="mx-auto w-full max-w-xl flex-1 px-4 py-6">{children}</main>
+      <main id="conteudo" tabIndex={-1} className="outline-none mx-auto w-full max-w-xl flex-1 px-4 py-6">{children}</main>
     </>
   );
 }

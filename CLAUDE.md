@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
-MeuRecibo: multi-user web app for issuing professional receipts (PDF). UI, copy, comments and docs are in **Brazilian Portuguese** — keep it that way. Architecture decisions live in `docs/ARQUITETURA.md` (items marked `[CONFIRMADO]` are settled; update the doc when a decision changes). Delivery follows 10 phases listed at the end of that doc; phases 1–9 are done.
+MeuRecibo: multi-user web app for issuing professional receipts (PDF). UI, copy, comments and docs are in **Brazilian Portuguese** — keep it that way. Architecture decisions live in `docs/ARQUITETURA.md` (items marked `[CONFIRMADO]` are settled; update the doc when a decision changes). Delivery follows 10 phases listed at the end of that doc; all 10 phases are done.
 
 ## Commands
 
@@ -18,6 +18,7 @@ npm test                     # unit + DB/RLS tests (PGlite, offline) — run bef
 npx vitest run tests/unit/history.test.ts         # single file
 npx vitest run tests/db -t "histórico"            # single describe/test by name
 npm run test:integration     # RLS isolation against the real DEV Supabase project (.env.local)
+npm run test:e2e             # Playwright (installed Chrome, 375px) against `npm run dev`; E2E_BASE_URL=<url> targets a deploy
 npm run db:push              # apply supabase/migrations to the project in SUPABASE_DB_URL
 npm run admin:create -- --username <u> --name "<Nome>"   # bootstrap Super Admin
 ```
@@ -49,6 +50,8 @@ Next.js 16 App Router (`src/proxy.ts`, not middleware), React 19, TypeScript, Ta
 
 **Support mode (admin, read-only).** A super admin with an open `support_sessions` row (30 min) sees the target user's app: `requireOnboardedUser()` then returns the target's `userId` plus `support`. It **rejects support mode by default**. Only read-only pages pass `{ allowSupport: true }` and must hide write UI when `support` is set. Server actions must never opt in. PDFs delivered to an admin are audited (`admin.support.view_pdf`). The audit screen uses the `admin_list_audit` RPC.
 
+**Security headers and limits.** The CSP with a per-request nonce is built in `src/lib/security/csp.ts` and set by the proxy. The root layout calls `connection()` so every page is dynamic and gets the nonce. Never add inline `<script>` or third-party script origins. Other headers live in `next.config.ts`. Abuse-prone actions and routes call `withinRateLimit(name, userId)` (`src/lib/security/rate-limit.ts`), which is DB-backed through the service-role-only RPC `rate_limit_hit`.
+
 **Client-side PII.** Emission and correction drafts (patient names, CPF) live only in `sessionStorage` (`features/receipts/draft.ts`), keyed by draft id. They are cleared on sign-out, on login mount and after issuing. Never move them to localStorage or the server.
 
 **Images.** Uploads are validated by magic bytes (`features/assets/image-validation.ts`). Signature/stamp background removal is a custom adaptive threshold in `features/assets/background-removal.ts`.
@@ -57,6 +60,7 @@ Next.js 16 App Router (`src/proxy.ts`, not middleware), React 19, TypeScript, Ta
 
 - `tests/unit/` holds pure logic and PDF rendering. PDF assertions extract text with pdfjs.
 - `tests/db/rls.test.ts` applies every migration to in-process PGlite with auth/storage stubs (`tests/db/supabase-stubs.sql`) and impersonates users via `request.jwt.claim.sub` + `set role authenticated`. Users added inside a `describe` must be deleted afterwards, because the admin tests count users.
+- `tests/e2e/` (Playwright + axe) creates `e2e-pw-*` accounts in global setup and deletes them, with their files and audit rows, in teardown. `fluxo.spec.ts` is serial, and `qualidade.spec.ts` runs after it (its rate-limit test must stay last).
 - `tests/integration/` hits the real DEV project. Test users are named `teste-(a|b|adm)-<hex>`, are tracked immediately on creation and are deleted in `afterAll` along with their audit rows.
 
 ## Rules for this repo

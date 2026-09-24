@@ -9,6 +9,7 @@ import { usernameToAuthEmail } from "@/features/auth/username";
 import { publicEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createUserSchema, userIdSchema } from "./schemas";
+import { RATE_LIMIT_MESSAGE, withinRateLimit } from "@/lib/security/rate-limit";
 
 // Toda ação: (1) autoriza super admin no servidor, (2) valida entrada,
 // (3) executa com a secret key, (4) registra auditoria sem dados sensíveis.
@@ -32,6 +33,7 @@ export type CreateUserState = {
 
 export async function createUser(_prev: CreateUserState, formData: FormData): Promise<CreateUserState> {
   const { userId: adminId } = await requireSuperAdmin();
+  if (!(await withinRateLimit("adminUserAction", adminId))) return { formError: RATE_LIMIT_MESSAGE };
 
   const parsed = createUserSchema.safeParse({
     displayName: String(formData.get("displayName") ?? ""),
@@ -93,6 +95,7 @@ async function findManagedUser(userId: string) {
 
 export async function resetAccess(userId: string): Promise<ActionResult<{ credentials: IssuedCredentials }>> {
   const { userId: adminId } = await requireSuperAdmin();
+  if (!(await withinRateLimit("adminUserAction", adminId))) return { ok: false, error: RATE_LIMIT_MESSAGE };
   const target = await findManagedUser(userId);
   if (!target) return { ok: false, error: "Usuário não encontrado." };
   if (target.status !== "active") {
@@ -134,6 +137,7 @@ export async function resetAccess(userId: string): Promise<ActionResult<{ creden
 
 export async function setUserStatus(userId: string, status: "active" | "disabled"): Promise<ActionResult> {
   const { userId: adminId } = await requireSuperAdmin();
+  if (!(await withinRateLimit("adminUserAction", adminId))) return { ok: false, error: RATE_LIMIT_MESSAGE };
   const target = await findManagedUser(userId);
   if (!target) return { ok: false, error: "Usuário não encontrado." };
   if (target.status === status) return { ok: true };

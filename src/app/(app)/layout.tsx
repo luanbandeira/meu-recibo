@@ -28,7 +28,7 @@ export default async function UserAppLayout({ children }: { children: React.Reac
         <SectionNav label="Principal" items={sections} />
       </div>
       {/* pb-28 no celular: espaço para a navegação inferior */}
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-28 sm:pb-8">{children}</main>
+      <main id="conteudo" tabIndex={-1} className="outline-none mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-28 sm:pb-8">{children}</main>
       <MobileNav readOnly={readOnly} />
     </>
   );

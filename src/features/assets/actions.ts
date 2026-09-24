@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { readImageInfo, type ImageInfo } from "./image-validation";
 import { ASSET_LIMITS, MAX_SIDE, MIN_SIDE, type AssetKind } from "./limits";
+import { RATE_LIMIT_MESSAGE, withinRateLimit } from "@/lib/security/rate-limit";
 
 // O navegador envia os arquivos direto ao Storage privado (RLS: só na pasta
 // do próprio usuário; bucket limita tipo e tamanho). Esta ação NÃO confia no
@@ -43,6 +44,11 @@ export async function registerAsset(input: RegisterAssetInput): Promise<Register
   const { bucket, maxBytes, processedMaxSide } = ASSET_LIMITS[kind as AssetKind];
 
   const cleanup = () => createAdminClient().storage.from(bucket).remove([originalPath, processedPath]);
+
+  if (!(await withinRateLimit("assetUpload", userId))) {
+    if (originalPath.startsWith(`${userId}/`) && processedPath.startsWith(`${userId}/`)) await cleanup();
+    return { ok: false, error: RATE_LIMIT_MESSAGE };
+  }
 
   if (!originalPath.startsWith(`${userId}/`) || !processedPath.startsWith(`${userId}/`)) {
     return { ok: false, error: "Arquivo inválido." };

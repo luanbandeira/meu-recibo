@@ -49,3 +49,8 @@ next-env.d.ts
 # gerado no postinstall
 /public/pdfjs/
 /assets/pdf-fonts/
+
+# testes E2E (contas temporárias e relatórios)
+/tests/e2e/.state.json
+/test-results/
+/playwright-report/

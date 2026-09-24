@@ -16,7 +16,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         banner={support && <SupportBanner support={support} area="admin" />}
       />
       <AdminNav />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">{children}</main>
+      <main id="conteudo" tabIndex={-1} className="outline-none mx-auto w-full max-w-5xl flex-1 px-4 py-6">{children}</main>
     </>
   );
 }

@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-// CSP com nonce entra na fase de hardening (docs/ARQUITETURA.md §15).
+// A CSP (com nonce por requisição) é definida no proxy: src/lib/security/csp.ts.
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },

@@ -15,7 +15,8 @@
     "db:types": "tsx scripts/db.ts types",
     "admin:create": "tsx scripts/create-admin.ts",
     "test:db": "vitest run tests/db",
-    "postinstall": "node scripts/copy-pdf-worker.mjs && node scripts/build-pdf-fonts.mjs"
+    "postinstall": "node scripts/copy-pdf-worker.mjs && node scripts/build-pdf-fonts.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@fontsource/arimo": "^5.3.0",
@@ -39,7 +40,9 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.20.4",
     "@types/pg": "^8.23.1",

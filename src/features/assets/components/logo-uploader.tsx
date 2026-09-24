@@ -97,6 +97,9 @@ export function LogoUploader({
       <input
         ref={inputRef}
         type="file"
+        // Acionado pelos botões visíveis; o rótulo serve a leitores de tela.
+        aria-label="Escolher arquivo da logo"
+        tabIndex={-1}
         accept="image/png,image/jpeg,image/webp"
         className="sr-only"
         id="logo-file"

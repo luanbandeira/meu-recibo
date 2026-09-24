@@ -252,6 +252,18 @@ describe.skipIf(!hasSupabaseEnv)("Isolamento entre usuários (RLS)", () => {
     });
   });
 
+  describe("Limites de tentativas", () => {
+    it("só o servidor conta tentativas; o usuário não consegue usar nem zerar", async () => {
+      const key = `teste:${randomUUID()}`;
+      const hits = [];
+      for (let i = 0; i < 3; i++) hits.push((await admin.rpc("rate_limit_hit", { p_key: key, p_max: 2, p_window_seconds: 60 })).data);
+      expect(hits).toEqual([true, true, false]);
+
+      const user = await userA.client.rpc("rate_limit_hit", { p_key: key, p_max: 1000, p_window_seconds: 1 });
+      expect(user.error).not.toBeNull();
+    });
+  });
+
   describe("Visitante sem login", () => {
     it("NÃO consulta o histórico", async () => {
       const { error } = await anonClient().rpc("list_receipts", { p_user_id: userB.id });

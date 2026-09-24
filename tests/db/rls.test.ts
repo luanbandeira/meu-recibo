@@ -382,6 +382,27 @@ describe("administração de usuários (Fase 2)", () => {
   });
 });
 
+describe("limites de tentativas (Fase 10)", () => {
+  const hit = (key: string, max = 3, windowSeconds = 60) =>
+    db.query<{ ok: boolean }>("select public.rate_limit_hit($1, $2, $3) as ok", [key, max, windowSeconds]).then((r) => r.rows[0].ok);
+
+  it("conta por chave e recusa acima do limite", async () => {
+    expect([await hit("teste:a"), await hit("teste:a"), await hit("teste:a"), await hit("teste:a")]).toEqual([true, true, true, false]);
+    expect(await hit("teste:b")).toBe(true); // outra chave, outro contador
+  });
+
+  it("zera quando a janela passa", async () => {
+    await db.query("update private.rate_limits set window_start = now() - interval '2 minutes' where key = 'teste:a'");
+    expect(await hit("teste:a")).toBe(true);
+  });
+
+  it("nenhum usuário logado usa, lê ou zera o contador", async () => {
+    await expect(as(A, "select public.rate_limit_hit('x', 1000, 1)")).rejects.toThrow(/permission denied/);
+    await expect(as(A, "select * from private.rate_limits")).rejects.toThrow(/permission denied/);
+    await expect(as(A, "delete from private.rate_limits")).rejects.toThrow(/permission denied/);
+  });
+});
+
 describe("conta desativada e exclusão (LGPD)", () => {
   it("conta desativada perde acesso aos próprios dados", async () => {
     await db.query("update public.profiles set status = 'disabled' where id = $1", [A]);

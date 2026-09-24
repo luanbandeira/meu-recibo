@@ -29,6 +29,7 @@ Acesse http://localhost:3000 e entre com o usuário e a senha temporária exibid
 | `npm run typecheck` / `npm run lint` | verificação de tipos / lint |
 | `npm test` | testes unitários + testes de banco (RLS) em Postgres embutido — sem rede |
 | `npm run test:integration` | isolamento entre usuários contra o projeto Supabase de **dev** (usa `.env.local`) |
+| `npm run test:e2e` | ponta a ponta no navegador (Chrome instalado, tela de celular): emissão, correção, modo suporte, acessibilidade, CSP e limites. Usa o servidor local; `E2E_BASE_URL=https://...` testa um deploy |
 | `npm run db:push` | aplica as migrations (`SUPABASE_DB_URL`) |
 | `npm run db:types` | gera `src/types/database.ts` a partir do banco (requer Docker; ainda não usado) |
 | `npm run admin:create` | cria o Super Admin (bootstrap) |

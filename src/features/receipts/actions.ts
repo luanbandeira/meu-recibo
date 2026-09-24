@@ -10,6 +10,7 @@ import { MAX_CORRECTION_NOTE } from "./flow";
 import { generateAndAttachPdf } from "./pdf-service";
 import { getReceiptSource } from "./queries";
 import { buildSummary, emissionFields, validateValues, type RawValues } from "./values";
+import { RATE_LIMIT_MESSAGE, withinRateLimit } from "@/lib/security/rate-limit";
 
 const uuid = z.uuid();
 
@@ -28,6 +29,7 @@ export async function issueReceipt(input: {
   idempotencyKey: string;
 }): Promise<IssueResult> {
   const { userId } = await requireOnboardedUser();
+  if (!(await withinRateLimit("receiptIssue", userId))) return { ok: false, error: RATE_LIMIT_MESSAGE };
   if (!uuid.safeParse(input.templateId).success || !uuid.safeParse(input.idempotencyKey).success) {
     return { ok: false, error: "Dados inválidos." };
   }
@@ -70,6 +72,7 @@ export async function correctReceipt(input: {
   idempotencyKey: string;
 }): Promise<IssueResult> {
   const { userId } = await requireOnboardedUser();
+  if (!(await withinRateLimit("receiptIssue", userId))) return { ok: false, error: RATE_LIMIT_MESSAGE };
   if (!uuid.safeParse(input.receiptId).success || !uuid.safeParse(input.idempotencyKey).success) {
     return { ok: false, error: "Dados inválidos." };
   }
@@ -108,6 +111,7 @@ export async function correctReceipt(input: {
 /** Gera novamente o PDF de uma versão que ficou sem arquivo (falha anterior). */
 export async function retryReceiptPdf(receiptId: string): Promise<{ ok: boolean }> {
   const { userId } = await requireOnboardedUser();
+  if (!(await withinRateLimit("pdfRetry", userId))) return { ok: false };
   if (!uuid.safeParse(receiptId).success) return { ok: false };
   const supabase = await createClient();
   const { data } = await supabase.from("receipts").select("current_version_id").eq("id", receiptId).eq("user_id", userId).maybeSingle();

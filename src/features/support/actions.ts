@@ -7,6 +7,7 @@ import { requireSuperAdmin } from "@/features/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { SUPPORT_REASON_MAX, SUPPORT_REASON_MIN } from "./limits";
 import { getActiveSupportSession } from "./session";
+import { RATE_LIMIT_MESSAGE, withinRateLimit } from "@/lib/security/rate-limit";
 
 export type StartSupportState = { error?: string };
 
@@ -15,7 +16,8 @@ export type StartSupportState = { error?: string };
  * fecha uma sessão anterior e grava a auditoria na mesma transação.
  */
 export async function startSupport(_prev: StartSupportState, formData: FormData): Promise<StartSupportState> {
-  await requireSuperAdmin();
+  const { userId: adminId } = await requireSuperAdmin();
+  if (!(await withinRateLimit("supportStart", adminId))) return { error: RATE_LIMIT_MESSAGE };
   const userId = String(formData.get("userId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim();
   if (!z.uuid().safeParse(userId).success) return { error: "Usuário inválido." };

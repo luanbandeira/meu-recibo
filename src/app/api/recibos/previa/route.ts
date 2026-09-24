@@ -8,6 +8,7 @@ import { loadPdfImage, parseSettings } from "@/features/receipts/pdf-service";
 import { getReceiptSource } from "@/features/receipts/queries";
 import { emissionFields, validateValues } from "@/features/receipts/values";
 import { getTemplate } from "@/features/templates/queries";
+import { RATE_LIMIT_MESSAGE, withinRateLimit } from "@/lib/security/rate-limit";
 
 // Prévia = o PDF real, gerado em memória com os dados do formulário.
 // Não salva nada e não consome número de recibo.
@@ -26,6 +27,10 @@ export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session || session.profile.status !== "active" || session.profile.role !== "user") {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401, headers: noStore });
+  }
+
+  if (!(await withinRateLimit("pdfPreview", session.userId))) {
+    return NextResponse.json({ error: RATE_LIMIT_MESSAGE }, { status: 429, headers: { ...noStore, "Retry-After": "60" } });
   }
 
   const body = bodySchema.safeParse(await request.json().catch(() => null));

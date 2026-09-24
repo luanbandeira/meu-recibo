@@ -458,6 +458,11 @@ A sessão aberta no banco **é** o estado do modo suporte — não há cookie a 
 
 RLS em tudo · autorização server-side · Zod em toda entrada · uploads validados por bytes mágicos · storage privado · conteúdo do editor em JSON com whitelist · sem `dangerouslySetInnerHTML` · secret key só em `server-only` (build falha se importada no cliente) · headers (CSP, HSTS, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`) · rate limit do Supabase Auth no login + limite simples nas ações admin e no preview de PDF · JWT curto · auditoria admin · nomes de arquivo sanitizados · `.env*` fora do git.
 
+**Implementação (Fase 10) [CONFIRMADO]:**
+- **CSP com nonce** por requisição, gerada no proxy (`src/lib/security/csp.ts`): `script-src 'self' 'nonce-…' 'strict-dynamic'` (sem `unsafe-inline`; `unsafe-eval` só em desenvolvimento), `frame-ancestors 'none'`, `object-src 'none'`, `form-action 'self'`, imagens/conexões só do próprio site e do Supabase, worker do pdf.js do próprio site. `style-src` aceita `'unsafe-inline'` porque editor, recorte e pdf.js usam atributos `style` (estilo não executa código). Todas as páginas são dinâmicas (`connection()` no layout raiz) para o nonce chegar aos scripts. Verificado: atributo `onerror` injetado não executa; iframe externo é bloqueado.
+- **Limites de tentativas** no banco (`private.rate_limits` + RPC `rate_limit_hit`, só service role), janela fixa por usuário e ação: prévia de PDF 40/min, download 120/min, emitir/corrigir 20/min, regerar PDF 10/min, salvar modelo 120/min, criar modelo/campo 30/h, envio de imagem 30/h, ações admin 30/h, abrir suporte 20/h. Resposta: 429 + `Retry-After` nas rotas, mensagem amigável nas actions. Falha do contador = deixa passar (limite não é autorização).
+- **E2E** (`npm run test:e2e`, Playwright com o Chrome instalado, 375 px): emissão completa, busca + correção, modo suporte + auditoria, axe WCAG 2.1 A/AA sem violações sérias nas telas principais, sem rolagem lateral de 320 a 1440 px, cabeçalhos de segurança, atalho "Pular para o conteúdo" e limite de tentativas. Contas `e2e-pw-*` criadas e apagadas pela própria execução.
+
 ## 16. LGPD
 
 - **Atenção:** nome do paciente + tipo de cirurgia é **dado pessoal sensível (saúde, art. 11)**. Tratamos como tal: acesso mínimo, sem esses dados em logs/auditoria/URLs, região de dados no Brasil (sa-east-1).

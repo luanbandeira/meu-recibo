@@ -7,12 +7,14 @@ import type { FieldDefinition } from "@/features/templates/document/variables";
 import { createClient } from "@/lib/supabase/server";
 import { FIELD_COLUMNS } from "./queries";
 import { createFieldSchema, normalizeDefault, updateFieldSchema } from "./schema";
+import { RATE_LIMIT_MESSAGE, withinRateLimit } from "@/lib/security/rate-limit";
 
 type Errors = Partial<Record<"label" | "key" | "type" | "defaultValue", string>>;
 export type FieldActionResult = { ok: true; field: FieldDefinition } | { ok: false; errors?: Errors; error?: string };
 
 export async function createField(input: z.input<typeof createFieldSchema>): Promise<FieldActionResult> {
   const { userId } = await requireOnboardedUser();
+  if (!(await withinRateLimit("fieldCreate", userId))) return { ok: false, error: RATE_LIMIT_MESSAGE };
   const parsed = createFieldSchema.safeParse(input);
   if (!parsed.success) {
     const e = z.flattenError(parsed.error).fieldErrors;
