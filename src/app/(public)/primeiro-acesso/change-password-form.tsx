@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { startTransition, useActionState, type FormEvent } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { PasswordField } from "@/components/ui/text-field";
@@ -12,8 +12,16 @@ const initialState: ChangePasswordState = {};
 export function ChangePasswordForm() {
   const [state, formAction, pending] = useActionState(changeTemporaryPassword, initialState);
 
+  // Chamamos a action manualmente (em vez de <form action>) porque o React
+  // limpa o formulário após a action e o usuário perderia o que digitou.
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(() => formAction(formData));
+  }
+
   return (
-    <form action={formAction} className="flex flex-col gap-5" noValidate>
+    <form onSubmit={onSubmit} className="flex flex-col gap-5" noValidate>
       {state.formError && <Alert tone="error">{state.formError}</Alert>}
       <PasswordField
         label="Nova senha"

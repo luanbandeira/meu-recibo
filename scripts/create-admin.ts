@@ -33,20 +33,25 @@ const supabase = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } },
 );
 
-const password = generateTemporaryPassword();
-const { error } = await supabase.auth.admin.createUser({
-  email: usernameToAuthEmail(username, requireEnv("NEXT_PUBLIC_AUTH_EMAIL_DOMAIN")),
-  password,
-  email_confirm: true,
-  app_metadata: { username, display_name: displayName, role: "super_admin" },
-});
+// Sem top-level await: o projeto é CommonJS.
+async function main() {
+  const password = generateTemporaryPassword();
+  const { error } = await supabase.auth.admin.createUser({
+    email: usernameToAuthEmail(username, requireEnv("NEXT_PUBLIC_AUTH_EMAIL_DOMAIN")),
+    password,
+    email_confirm: true,
+    app_metadata: { username, display_name: displayName, role: "super_admin" },
+  });
 
-if (error) {
-  console.error(`Não foi possível criar o administrador: ${error.message}`);
-  process.exit(1);
+  if (error) {
+    console.error(`Não foi possível criar o administrador: ${error.message}`);
+    process.exit(1);
+  }
+
+  console.log("\nSuper Admin criado.");
+  console.log(`  Usuário:          ${username}`);
+  console.log(`  Senha temporária: ${password}`);
+  console.log("\nGuarde a senha agora — ela não será exibida novamente.\n");
 }
 
-console.log("\nSuper Admin criado.");
-console.log(`  Usuário:          ${username}`);
-console.log(`  Senha temporária: ${password}`);
-console.log("\nGuarde a senha agora — ela não será exibida novamente.\n");
+void main();
