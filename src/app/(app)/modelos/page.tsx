@@ -50,7 +50,7 @@ export default async function TemplatesPage({ searchParams }: PageProps<"/modelo
         ) : (
           <EmptyState
             title="Criar meu primeiro modelo"
-            description="Comece pelo recibo padrão e ajuste ao seu jeito."
+            description="Escolha um modelo pronto (serviço, saúde, cirurgia ou em branco) e ajuste ao seu jeito."
             action={support ? undefined : <LinkButton href="/modelos/novo">Criar modelo</LinkButton>}
           />
         )

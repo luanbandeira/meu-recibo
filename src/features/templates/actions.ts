@@ -7,7 +7,7 @@ import { listFields } from "@/features/fields/queries";
 import { requireOnboardedUser } from "@/features/profile/guards";
 import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_SETTINGS } from "./document/constants";
-import { BLANK_TEMPLATE_CONTENT, DEFAULT_TEMPLATE_CONTENT } from "./document/default-template";
+import { templatePreset } from "./document/default-template";
 import { templateContentSchema, templateSettingsSchema } from "./document/schema";
 import { extractVariables, knownKeys } from "./document/variables";
 import { RATE_LIMIT_MESSAGE, withinRateLimit } from "@/lib/security/rate-limit";
@@ -30,10 +30,9 @@ export async function createTemplate(_prev: CreateTemplateState, formData: FormD
   if (!(await withinRateLimit("templateCreate", userId))) return { error: RATE_LIMIT_MESSAGE };
   const name = nameSchema.safeParse(String(formData.get("name") ?? ""));
   if (!name.success) return { error: name.error.issues[0].message };
-  const base = formData.get("base") === "blank" ? "blank" : "default";
+  const { content } = templatePreset(formData.get("modelo"));
 
   const supabase = await createClient();
-  const content = base === "blank" ? BLANK_TEMPLATE_CONTENT : DEFAULT_TEMPLATE_CONTENT;
   const { data, error } = await supabase
     .from("receipt_templates")
     .insert({

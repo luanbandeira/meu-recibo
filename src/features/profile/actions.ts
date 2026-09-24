@@ -48,7 +48,7 @@ export async function saveProfessionalProfile(
   return { savedAt: Date.now() };
 }
 
-export async function completeOnboarding() {
+export async function completeOnboarding(formData: FormData) {
   const { userId } = await requireUser();
   const profile = await getProfessionalProfile(userId);
   if (!profile) redirect("/onboarding");
@@ -60,7 +60,7 @@ export async function completeOnboarding() {
     .eq("user_id", userId)
     .is("onboarding_completed_at", null);
   if (error) throw new Error("Não foi possível concluir a configuração.");
-  await ensureDefaultTemplate(userId);
+  await ensureDefaultTemplate(userId, String(formData.get("modelo") ?? ""));
 
   revalidatePath("/", "layout");
   redirect("/dashboard?bem-vindo=1");

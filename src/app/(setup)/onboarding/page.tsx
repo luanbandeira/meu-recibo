@@ -8,10 +8,11 @@ import { ProfessionalProfileForm } from "@/features/profile/components/professio
 import { ProfileLogo, ProfileSignature } from "@/features/profile/components/profile-assets";
 import { getProfessionalProfile, getSourceAsset, signedAssetUrl } from "@/features/profile/queries";
 import type { SavedProcessing } from "@/features/assets/components/signature-editor";
+import { PresetPicker } from "@/features/templates/components/preset-picker";
 
 export const metadata: Metadata = { title: "Configuração inicial" };
 
-const steps = ["Seus dados", "Logo", "Assinatura"];
+const steps = ["Seus dados", "Logo", "Assinatura", "Modelo"];
 
 export default async function OnboardingPage({ searchParams }: PageProps<"/onboarding">) {
   const { userId, profile } = await requireUser();
@@ -20,7 +21,7 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
 
   const requested = Number((await searchParams).etapa) || 1;
   // Logo e assinatura só depois dos dados profissionais salvos.
-  const step = professional ? Math.min(Math.max(requested, 1), 3) : 1;
+  const step = professional ? Math.min(Math.max(requested, 1), 4) : 1;
 
   const [logoUrl, signatureUrl, signatureOriginal] = await Promise.all([
     signedAssetUrl(professional?.logo ?? null),
@@ -39,7 +40,7 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
         </p>
       </div>
 
-      <ol className="grid grid-cols-3 gap-2" aria-label="Etapas">
+      <ol className="grid grid-cols-4 gap-2" aria-label="Etapas">
         {steps.map((label, index) => {
           const number = index + 1;
           const state = number < step ? "done" : number === step ? "current" : "todo";
@@ -108,15 +109,33 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
               originalUrl={signatureOriginalUrl}
               savedProcessing={(professional?.signature?.processing as SavedProcessing) ?? null}
             />
-            <form action={completeOnboarding} className="flex justify-between gap-2 border-t border-slate-100 pt-4">
+            <div className="flex justify-between gap-2 border-t border-slate-100 pt-4">
               <LinkButton href="/onboarding?etapa=2" variant="ghost">
                 ← Voltar
               </LinkButton>
-              <Button type="submit" variant={signatureUrl ? "primary" : "secondary"}>
-                {signatureUrl ? "Concluir configuração" : "Pular e concluir"}
-              </Button>
-            </form>
+              <LinkButton href="/onboarding?etapa=4" variant={signatureUrl ? "primary" : "secondary"}>
+                {signatureUrl ? "Continuar" : "Pular por enquanto"}
+              </LinkButton>
+            </div>
           </div>
+        )}
+
+        {step === 4 && (
+          <form action={completeOnboarding} className="flex flex-col gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Seu modelo de recibo</h2>
+              <p className="text-sm text-slate-600">
+                Escolha o texto que mais combina com o seu trabalho. Depois você edita à vontade em Modelos.
+              </p>
+            </div>
+            <PresetPicker />
+            <div className="flex justify-between gap-2 border-t border-slate-100 pt-4">
+              <LinkButton href="/onboarding?etapa=3" variant="ghost">
+                ← Voltar
+              </LinkButton>
+              <Button type="submit">Concluir configuração</Button>
+            </div>
+          </form>
         )}
       </section>
 

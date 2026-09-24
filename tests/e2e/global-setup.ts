@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
-import { DEFAULT_TEMPLATE_CONTENT, DEFAULT_TEMPLATE_NAME, DEFAULT_TEMPLATE_SETTINGS } from "../../src/features/templates/document/default-template";
+import { DEFAULT_TEMPLATE_SETTINGS, SURGICAL_TEMPLATE_CONTENT } from "../../src/features/templates/document/default-template";
 import { extractVariables } from "../../src/features/templates/document/variables";
 import { PRODUCTION_SITE_HOST, refuseProduction } from "../../scripts/production";
 import { writeState, type E2EAccount } from "./state";
@@ -56,10 +56,11 @@ export default async function globalSetup() {
 
   const template = await admin.from("receipt_templates").insert({
     user_id: user.id,
-    name: DEFAULT_TEMPLATE_NAME,
-    content: DEFAULT_TEMPLATE_CONTENT,
+    // Modelo com paciente e data do procedimento (os testes preenchem esses campos).
+    name: "Recibo padrão",
+    content: SURGICAL_TEMPLATE_CONTENT,
     settings: DEFAULT_TEMPLATE_SETTINGS,
-    used_variables: extractVariables(DEFAULT_TEMPLATE_CONTENT),
+    used_variables: extractVariables(SURGICAL_TEMPLATE_CONTENT),
     is_default: true,
   });
   if (template.error) throw new Error(`modelo: ${template.error.message}`);

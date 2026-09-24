@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { BLANK_TEMPLATE_CONTENT, DEFAULT_TEMPLATE_CONTENT } from "@/features/templates/document/default-template";
+import {
+  DEFAULT_PRESET_KEY,
+  SURGICAL_TEMPLATE_CONTENT,
+  TEMPLATE_PRESETS,
+  templatePreset,
+} from "@/features/templates/document/default-template";
 import { templateContentSchema, templateSettingsSchema } from "@/features/templates/document/schema";
 import {
   buildCatalog,
@@ -14,9 +19,8 @@ const p = (...content: unknown[]) => ({ type: "paragraph", content });
 const valid = (value: unknown) => templateContentSchema.safeParse(value).success;
 
 describe("schema do documento (barreira contra XSS e conteúdo malformado)", () => {
-  it("aceita os modelos padrão e em branco", () => {
-    expect(valid(DEFAULT_TEMPLATE_CONTENT)).toBe(true);
-    expect(valid(BLANK_TEMPLATE_CONTENT)).toBe(true);
+  it("aceita todos os modelos prontos", () => {
+    for (const preset of TEMPLATE_PRESETS) expect(valid(preset.content), preset.key).toBe(true);
   });
 
   it("aceita a forma que o TipTap produz (atributos nulos, listas, títulos)", () => {
@@ -79,7 +83,7 @@ describe("schema do documento (barreira contra XSS e conteúdo malformado)", () 
 
 describe("variáveis", () => {
   it("extrai variáveis e blocos na ordem do documento, sem repetir", () => {
-    expect(extractVariables(DEFAULT_TEMPLATE_CONTENT)).toEqual([
+    expect(extractVariables(SURGICAL_TEMPLATE_CONTENT)).toEqual([
       "logo",
       "pagador",
       "cpf_pagador",
@@ -118,5 +122,36 @@ describe("variáveis", () => {
     expect(isReservedKey("profissional_nome")).toBe(true);
     expect(isReservedKey("assinatura")).toBe(true);
     expect(isReservedKey("cirurgiao")).toBe(false);
+  });
+});
+
+describe("modelos prontos (galeria)", () => {
+  const variables = (key: string) => extractVariables(templatePreset(key).content);
+
+  it("o padrão é o genérico de prestação de serviço — sem paciente, cirurgia nem hospital", () => {
+    expect(DEFAULT_PRESET_KEY).toBe("servico");
+    expect(variables("servico")).toEqual(["logo", "pagador", "cpf_pagador", "valor", "valor_extenso", "descricao_servico", "cidade", "data_emissao", "assinatura"]);
+  });
+
+  it("saúde pede paciente e data, mas não cirurgia nem hospital", () => {
+    const keys = variables("saude");
+    expect(keys).toEqual(expect.arrayContaining(["paciente", "cpf_paciente", "data_procedimento"]));
+    expect(keys).not.toContain("cirurgia");
+    expect(keys).not.toContain("hospital");
+  });
+
+  it("nenhum modelo pronto tem linha divisória; todos têm cabeçalho e assinatura", () => {
+    for (const preset of TEMPLATE_PRESETS) {
+      const types = (preset.content.content ?? []).map((node) => (node as { type: string }).type);
+      expect(types, preset.key).not.toContain("horizontalRule");
+      expect(types[0], preset.key).toBe("professionalHeader");
+      expect(types.at(-1), preset.key).toBe("signature");
+    }
+  });
+
+  it("chave desconhecida cai no modelo padrão", () => {
+    expect(templatePreset("<script>").key).toBe("servico");
+    expect(templatePreset(undefined).key).toBe("servico");
+    expect(templatePreset("saude").key).toBe("saude");
   });
 });

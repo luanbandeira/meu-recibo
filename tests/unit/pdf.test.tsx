@@ -3,7 +3,7 @@ import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { describe, expect, it } from "vitest";
 import { receiptFileName, renderReceiptPdf } from "@/features/pdf/render";
 import { DEFAULT_SETTINGS } from "@/features/templates/document/constants";
-import { DEFAULT_TEMPLATE_CONTENT } from "@/features/templates/document/default-template";
+import { SURGICAL_TEMPLATE_CONTENT } from "@/features/templates/document/default-template";
 import type { FieldDefinition, FieldType } from "@/features/templates/document/variables";
 
 // PNG mínimo válido (RGBA sólido) gerado aqui, para testar imagens no PDF.
@@ -77,7 +77,7 @@ async function extract(buffer: Buffer) {
 describe("PDF do recibo", () => {
   it("gera A4 com texto real (não imagem), valores formatados e sem variáveis cruas", async () => {
     const buffer = await renderReceiptPdf({
-      content: DEFAULT_TEMPLATE_CONTENT, settings: DEFAULT_SETTINGS, profile, images, fields, values,
+      content: SURGICAL_TEMPLATE_CONTENT, settings: DEFAULT_SETTINGS, profile, images, fields, values,
       receiptNumber: "REC-2026-000001", title: "Recibo REC-2026-000001",
     });
     expect(buffer.subarray(0, 5).toString()).toBe("%PDF-");
@@ -104,7 +104,7 @@ describe("PDF do recibo", () => {
 
   it("A4 exato: 595,28 × 841,89 pt", async () => {
     const buffer = await renderReceiptPdf({
-      content: DEFAULT_TEMPLATE_CONTENT, settings: DEFAULT_SETTINGS, profile, images: { logo: null, signature: null },
+      content: SURGICAL_TEMPLATE_CONTENT, settings: DEFAULT_SETTINGS, profile, images: { logo: null, signature: null },
       fields, values, receiptNumber: null, title: "t",
     });
     const pdf = await getDocument({ data: new Uint8Array(buffer) }).promise;
