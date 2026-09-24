@@ -14,8 +14,10 @@ grant usage on schema public, auth, storage, extensions to anon, authenticated;
 create table auth.users (
   id uuid primary key default gen_random_uuid(),
   email text,
-  raw_app_meta_data jsonb default '{}'
+  raw_app_meta_data jsonb default '{}',
+  last_sign_in_at timestamptz
 );
+create table auth.sessions (id uuid primary key default gen_random_uuid(), user_id uuid references auth.users (id) on delete cascade);
 
 create function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid

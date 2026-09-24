@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { citext } from "@electric-sql/pglite/contrib/citext";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
+import { unaccent } from "@electric-sql/pglite/contrib/unaccent";
 import { beforeAll, describe, expect, it } from "vitest";
 
 const A = "00000000-0000-0000-0000-00000000000a";
@@ -42,7 +43,7 @@ let templateB: string;
 let receiptB: Awaited<ReturnType<typeof issue>>;
 
 beforeAll(async () => {
-  db = new PGlite({ extensions: { citext, pg_trgm } });
+  db = new PGlite({ extensions: { citext, pg_trgm, unaccent } });
   await db.exec(readFileSync("tests/db/supabase-stubs.sql", "utf8"));
   const dir = "supabase/migrations";
   for (const file of readdirSync(dir).sort()) {
@@ -218,6 +219,57 @@ describe("modo suporte do Super Admin (somente leitura, auditado)", () => {
     const audit = await db.query<{ action: string }>(
       "select action from public.audit_logs where entity_id = $1 order by id", [sessionId]);
     expect(audit.rows.map((r) => r.action)).toEqual(["admin.support.start", "admin.support.end"]);
+  });
+});
+
+describe("administração de usuários (Fase 2)", () => {
+  type ListedUser = { username: string; total_count: string };
+  const list = (uid: string, search: string | null = null, status: string | null = null) =>
+    as<ListedUser>(uid, "select username, total_count from public.admin_list_users($1, $2)", [search, status]);
+
+  it("usuário comum não usa nenhuma função administrativa", async () => {
+    await expect(list(A)).rejects.toThrow(/Acesso negado/);
+    await expect(as(A, "select public.admin_get_user($1)", [B])).rejects.toThrow(/Acesso negado/);
+    await expect(as(A, "select public.admin_user_stats()")).rejects.toThrow(/Acesso negado/);
+  });
+
+  it("ninguém logado revoga sessões — só o servidor (service role)", async () => {
+    await expect(as(ADMIN, "select public.admin_revoke_sessions($1)", [A])).rejects.toThrow(/permission denied/);
+    await expect(as(A, "select public.admin_revoke_sessions($1)", [B])).rejects.toThrow(/permission denied/);
+  });
+
+  it("lista só usuários comuns, com total para paginação", async () => {
+    const rows = await list(ADMIN);
+    expect(rows.map((r) => r.username).sort()).toEqual(["usuario-a", "usuario-b"]);
+    expect(Number(rows[0].total_count)).toBe(2);
+  });
+
+  it("busca sem acento e sem diferenciar maiúsculas; curingas digitados são literais", async () => {
+    await db.query("update public.profiles set display_name = 'Mariana Souza' where id = $1", [B]);
+    expect((await list(ADMIN, "SOUZA")).map((r) => r.username)).toEqual(["usuario-b"]);
+    expect((await list(ADMIN, "usuario-a")).map((r) => r.username)).toEqual(["usuario-a"]);
+    expect(await list(ADMIN, "%")).toEqual([]);
+    expect(await list(ADMIN, "_")).toEqual([]);
+  });
+
+  it("filtra por situação e resume contagens", async () => {
+    await db.query("update public.profiles set status = 'disabled' where id = $1", [B]);
+    expect((await list(ADMIN, null, "disabled")).map((r) => r.username)).toEqual(["usuario-b"]);
+    const [{ s }] = await as<{ s: Record<string, number> }>(ADMIN, "select public.admin_user_stats() as s");
+    expect(s).toMatchObject({ total: 2, active: 1, disabled: 1 });
+    await db.query("update public.profiles set status = 'active' where id = $1", [B]);
+  });
+
+  it("detalhe não expõe o próprio admin nem outros admins", async () => {
+    expect(await as(ADMIN, "select * from public.admin_get_user($1)", [ADMIN])).toEqual([]);
+    const [user] = await as<{ username: string }>(ADMIN, "select * from public.admin_get_user($1)", [A]);
+    expect(user.username).toBe("usuario-a");
+  });
+
+  it("revogar sessões apaga todas as sessões do usuário", async () => {
+    await db.query("insert into auth.sessions (user_id) values ($1), ($1)", [A]);
+    const { rows } = await db.query<{ n: number }>("select public.admin_revoke_sessions($1) as n", [A]);
+    expect(rows[0].n).toBe(2);
   });
 });
 

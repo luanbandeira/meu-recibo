@@ -30,7 +30,7 @@ Acesse http://localhost:3000 e entre com o usuário e a senha temporária exibid
 | `npm test` | testes unitários + testes de banco (RLS) em Postgres embutido — sem rede |
 | `npm run test:integration` | isolamento entre usuários contra o projeto Supabase de **dev** (usa `.env.local`) |
 | `npm run db:push` | aplica as migrations (`SUPABASE_DB_URL`) |
-| `npm run db:types` | gera `src/types/database.ts` a partir do banco |
+| `npm run db:types` | gera `src/types/database.ts` a partir do banco (requer Docker; ainda não usado) |
 | `npm run admin:create` | cria o Super Admin (bootstrap) |
 
 ## Segurança

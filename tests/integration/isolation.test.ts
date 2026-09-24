@@ -15,6 +15,7 @@ import {
   anonClient,
   createTestUser,
   hasSupabaseEnv,
+  purgeTestAuditLogs,
   type TestUser,
 } from "./helpers";
 
@@ -76,6 +77,7 @@ describe.skipIf(!hasSupabaseEnv)("Isolamento entre usuários (RLS)", () => {
   afterAll(async () => {
     if (!admin) return;
     if (userB) await admin.storage.from("receipts").remove([pdfPathB()]);
+    await purgeTestAuditLogs(created);
     for (const id of created) await admin.auth.admin.deleteUser(id);
   });
 

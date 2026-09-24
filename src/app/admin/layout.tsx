@@ -1,4 +1,5 @@
 import { AppHeader } from "@/components/app-header";
+import { AdminNav } from "@/features/admin/components/admin-nav";
 import { requireSuperAdmin } from "@/features/auth/session";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -7,6 +8,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <>
       <AppHeader homeHref="/admin" userLabel={`${profile.display_name} · Administrador`} />
+      <AdminNav />
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">{children}</main>
     </>
   );

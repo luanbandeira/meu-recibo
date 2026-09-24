@@ -46,6 +46,35 @@ export async function createTestUser(
   return { id: data.user.id, username, password, client };
 }
 
+/**
+ * Remove as linhas de auditoria geradas pelos usuários de teste, para não
+ * poluir o histórico real do ambiente de desenvolvimento. audit_logs é
+ * append-only; só esta limpeza de teste desliga o gatilho, numa transação,
+ * usando a conexão direta (SUPABASE_DB_URL).
+ */
+export async function purgeTestAuditLogs(userIds: string[]) {
+  const dbUrl = process.env.SUPABASE_DB_URL;
+  if (!dbUrl || userIds.length === 0) return;
+  const { Client } = await import("pg");
+  const client = new Client({ connectionString: dbUrl });
+  await client.connect();
+  try {
+    await client.query("begin");
+    await client.query("alter table public.audit_logs disable trigger audit_logs_no_update");
+    await client.query(
+      "delete from public.audit_logs where actor_id = any($1::uuid[]) or target_user_id = any($1::uuid[])",
+      [userIds],
+    );
+    await client.query("alter table public.audit_logs enable trigger audit_logs_no_update");
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    await client.end();
+  }
+}
+
 export const EMPTY_DOC = { type: "doc", content: [{ type: "paragraph" }] };
 export const TINY_PDF = new Blob(["%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"], {
   type: "application/pdf",

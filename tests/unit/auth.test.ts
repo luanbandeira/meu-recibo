@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { generateTemporaryPassword, newPasswordSchema } from "@/features/auth/password";
-import { isValidUsername, normalizeUsername, usernameToAuthEmail } from "@/features/auth/username";
+import {
+  isValidUsername,
+  normalizeUsername,
+  sanitizeUsernameInput,
+  suggestUsername,
+  usernameToAuthEmail,
+} from "@/features/auth/username";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 
 describe("username", () => {
@@ -59,5 +65,22 @@ describe("safeRedirectPath", () => {
     [null, "/"],
   ])("%s → %s", (input, expected) => {
     expect(safeRedirectPath(input)).toBe(expected);
+  });
+});
+
+describe("sugestão e digitação de usuário", () => {
+  it.each([
+    ["Mariana Souza", "luciane"],
+    ["  José da Silva", "jose"],
+    ["Ângela", "angela"],
+    ["Al", ""],
+    ["", ""],
+  ])("%s → %s", (name, expected) => {
+    expect(suggestUsername(name)).toBe(expected);
+  });
+
+  it("remove acentos, espaços e caracteres inválidos enquanto digita", () => {
+    expect(sanitizeUsernameInput("Maria José!")).toBe("maria.jose");
+    expect(sanitizeUsernameInput("a".repeat(40))).toHaveLength(32);
   });
 });
