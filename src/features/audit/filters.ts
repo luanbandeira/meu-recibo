@@ -9,6 +9,7 @@ export const AUDIT_ACTION_OPTIONS = [
   { value: "suporte", label: "Modo de suporte (tudo)", prefix: "admin.support" },
   { value: "sessoes", label: "Entradas no modo de suporte", prefix: "admin.support.start" },
   { value: "pdf", label: "PDFs vistos no suporte", prefix: "admin.support.view_pdf" },
+  { value: "recibos", label: "Recibos excluídos pelos usuários", prefix: "user.receipt.delete" },
 ] as const;
 
 export const AUDIT_PERIOD_OPTIONS = [
@@ -81,6 +82,11 @@ export function auditDetails(entry: AuditDetailsInput): string | null {
       const version = typeof meta.version === "number" ? meta.version : null;
       if (!number) return null;
       return `${number}${version && version > 1 ? ` · versão ${version}` : ""}${meta.download === true ? " · baixou o arquivo" : ""}`;
+    }
+    case "user.receipt.delete": {
+      const number = typeof meta.number === "string" ? meta.number : null;
+      const versions = typeof meta.versions === "number" ? meta.versions : 1;
+      return number ? `${number}${versions > 1 ? ` (${versions} versões)` : ""}` : null;
     }
     case "admin.user.create":
       return typeof meta.username === "string" ? `Usuário @${meta.username}` : null;

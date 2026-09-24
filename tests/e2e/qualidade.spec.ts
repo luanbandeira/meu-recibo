@@ -84,7 +84,7 @@ test("teclado: primeiro Tab leva ao atalho “Pular para o conteúdo”", async 
   await expect(page.locator("main#conteudo")).toBeFocused();
 });
 
-// Por último: esgota o limite da prévia (dados inválidos → resposta rápida,
+// Perto do fim: esgota o limite da prévia (dados inválidos → resposta rápida,
 // sem gerar PDF). Os outros testes não dependem da prévia depois daqui.
 test("limite de tentativas: a prévia de PDF recusa excesso com 429", async ({ page }) => {
   const { user } = accounts();
@@ -106,4 +106,24 @@ test("limite de tentativas: a prévia de PDF recusa excesso com 429", async ({ p
   const last = await page.request.post("/api/recibos/previa", { data: {} });
   expect(await last.json()).toMatchObject({ error: expect.stringContaining("Muitas tentativas") });
   expect(last.headers()["retry-after"]).toBe("60");
+});
+
+// Depois do limite: exclui o recibo do fluxo principal (as telas já foram
+// verificadas acima).
+test("excluir recibo: pede confirmação e some do histórico", async ({ page }) => {
+  const { user } = accounts();
+  await login(page, user);
+  await page.goto("/recibos");
+  const first = page.locator("main ul a").first();
+  test.skip((await first.count()) === 0, "sem recibo nesta execução");
+  const number = (await first.innerText()).match(/REC-\d{4}-\d{6}/)![0];
+  await first.click();
+
+  await page.getByRole("button", { name: "Excluir recibo" }).click();
+  await expect(page.getByText(`Excluir o recibo ${number}?`)).toBeVisible();
+  await page.getByRole("button", { name: "Excluir para sempre" }).click();
+
+  await expect(page).toHaveURL(new URL(`/recibos?excluido=${number}`, page.url()).href);
+  await expect(page.getByText(`Recibo ${number} excluído.`)).toBeVisible();
+  await expect(page.getByRole("link", { name: new RegExp(number) })).toHaveCount(0);
 });

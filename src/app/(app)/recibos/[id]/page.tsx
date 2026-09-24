@@ -5,6 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import { LinkButton } from "@/components/ui/link-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireOnboardedUser } from "@/features/profile/guards";
+import { DeleteReceipt } from "@/features/receipts/components/delete-receipt";
 import { ReceiptDocumentView } from "@/features/receipts/components/receipt-document-view";
 import { getReceipt } from "@/features/receipts/queries";
 import { formatDateTime } from "@/lib/format/date";
@@ -117,6 +118,12 @@ export default async function ReceiptPage({ params, searchParams }: PageProps<"/
               );
             })}
           </ol>
+        </section>
+      )}
+
+      {!support && (
+        <section aria-label="Excluir recibo" className="border-t border-slate-200 pt-5">
+          <DeleteReceipt receiptId={receipt.id} number={receipt.number} versions={receipt.current_version_no} />
         </section>
       )}
     </div>

@@ -9,6 +9,7 @@ export const RATE_LIMITS = {
   pdfDownload: { max: 120, windowSeconds: 60 },
   receiptIssue: { max: 20, windowSeconds: 60 },
   pdfRetry: { max: 10, windowSeconds: 60 },
+  receiptDelete: { max: 30, windowSeconds: 3600 },
   templateSave: { max: 120, windowSeconds: 60 },
   templateCreate: { max: 30, windowSeconds: 3600 },
   fieldCreate: { max: 30, windowSeconds: 3600 },

@@ -291,6 +291,39 @@ describe("histórico: busca, filtros, ordenação e totais (Fase 8)", () => {
   });
 });
 
+describe("excluir recibo", () => {
+  type Deleted = { number: string; versions: number; pdf_paths: string[] };
+  const remove = (uid: string, receiptId: string) =>
+    as<{ r: Deleted }>(uid, "select public.delete_receipt($1) as r", [receiptId]).then((rows) => rows[0].r);
+
+  it("o dono exclui recibo e versões; devolve os PDFs para apagar", async () => {
+    const issued = await issue(A, templateA);
+    await as(A, `select public.correct_receipt($1, '{"valor":1}', '{}', null, gen_random_uuid())`, [issued.receipt_id]);
+    await db.query(`update public.receipt_versions set pdf_path = $1 where receipt_id = $2 and version_no = 1`, [
+      `${A}/${issued.receipt_id}/v1.pdf`,
+      issued.receipt_id,
+    ]);
+
+    const deleted = await remove(A, issued.receipt_id);
+    expect(deleted).toEqual({ number: issued.number, versions: 2, pdf_paths: [`${A}/${issued.receipt_id}/v1.pdf`] });
+    expect(await as(A, "select id from public.receipts where id = $1", [issued.receipt_id])).toEqual([]);
+    expect(await as(A, "select id from public.receipt_versions where receipt_id = $1", [issued.receipt_id])).toEqual([]);
+  });
+
+  it("o número excluído não é reutilizado", async () => {
+    const issued = await issue(A, templateA);
+    await remove(A, issued.receipt_id);
+    const next = await issue(A, templateA);
+    expect(Number(next.number.slice(-6))).toBe(Number(issued.number.slice(-6)) + 1);
+  });
+
+  it("ninguém exclui recibo de outra pessoa (nem o admin)", async () => {
+    await expect(remove(A, receiptB.receipt_id)).rejects.toThrow(/Recibo não encontrado/);
+    await expect(remove(ADMIN, receiptB.receipt_id)).rejects.toThrow(/Recibo não encontrado|Acesso negado/);
+    expect(await as(B, "select id from public.receipts where id = $1", [receiptB.receipt_id])).toHaveLength(1);
+  });
+});
+
 describe("modo suporte do Super Admin (somente leitura, auditado)", () => {
   it("só lê o alvo durante a sessão e registra início/fim", async () => {
     const receiptsOf = (uid: string) => as(ADMIN, "select id from public.receipts where user_id = $1", [uid]);

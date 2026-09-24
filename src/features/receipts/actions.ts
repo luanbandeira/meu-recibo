@@ -1,10 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
+import { writeAuditLog } from "@/features/audit/log";
 import { listFields } from "@/features/fields/queries";
 import { requireOnboardedUser } from "@/features/profile/guards";
 import { getTemplate } from "@/features/templates/queries";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_CORRECTION_NOTE } from "./flow";
 import { generateAndAttachPdf } from "./pdf-service";
@@ -119,4 +122,41 @@ export async function retryReceiptPdf(receiptId: string): Promise<{ ok: boolean 
   const result = await generateAndAttachPdf(userId, data.current_version_id).catch(() => ({ ok: false }));
   revalidatePath(`/recibos/${receiptId}`);
   return result;
+}
+
+/**
+ * Exclui um recibo do próprio usuário: o banco apaga recibo e versões numa
+ * transação (RPC) e devolve os PDFs, removidos em seguida do Storage (usuários
+ * não apagam arquivos diretamente). O número não é reutilizado. Fica na
+ * auditoria só o número — nenhum dado do pagador/paciente.
+ */
+export async function deleteReceipt(receiptId: string): Promise<{ ok: false; error: string }> {
+  const { userId } = await requireOnboardedUser();
+  if (!(await withinRateLimit("receiptDelete", userId))) return { ok: false, error: RATE_LIMIT_MESSAGE };
+  if (!uuid.safeParse(receiptId).success) return { ok: false, error: "Recibo não encontrado." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("delete_receipt", { p_receipt_id: receiptId });
+  if (error || !data) return { ok: false, error: "Não foi possível excluir o recibo. Tente novamente." };
+  const deleted = data as { number: string; versions: number; pdf_paths: string[] };
+
+  // Só arquivos deste recibo, na pasta do próprio usuário.
+  const paths = deleted.pdf_paths.filter((path) => path.startsWith(`${userId}/${receiptId}/`));
+  if (paths.length) {
+    const { error: storageError } = await createAdminClient().storage.from("receipts").remove(paths);
+    if (storageError) console.error("[recibo] PDFs não removidos após exclusão", { receiptId });
+  }
+
+  await writeAuditLog({
+    actorId: userId,
+    action: "user.receipt.delete",
+    targetUserId: userId,
+    entityType: "receipt",
+    entityId: receiptId,
+    metadata: { number: deleted.number, versions: deleted.versions },
+  });
+
+  revalidatePath("/recibos");
+  revalidatePath("/dashboard");
+  redirect(`/recibos?excluido=${encodeURIComponent(deleted.number)}`);
 }

@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Administração" };
 export default async function AdminHomePage({ searchParams }: PageProps<"/admin">) {
   await requireSuperAdmin();
   const supportEnded = (await searchParams).suporte === "encerrado";
-  const [stats, recent] = await Promise.all([getUserStats(), listAuditEntries({ limit: 8 })]);
+  const [stats, recent] = await Promise.all([getUserStats(), listAuditEntries({ limit: 8, adminOnly: true })]);
 
   const cards = [
     { label: "Usuários ativos", value: stats.active, href: "/admin/usuarios?situacao=ativos" },

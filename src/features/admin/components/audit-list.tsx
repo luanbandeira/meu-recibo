@@ -1,4 +1,4 @@
-import { auditActionLabel } from "@/features/audit/labels";
+import { auditActionLabel, isUserAction, removedActorLabel } from "@/features/audit/labels";
 import { formatDateTime } from "@/lib/format/date";
 import type { AuditEntry } from "../queries";
 
@@ -12,9 +12,9 @@ export function AuditList({ entries }: { entries: AuditEntry[] }) {
       {entries.map((entry) => (
         <li key={entry.id} className="flex flex-col gap-0.5 py-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
           <p className="text-sm text-slate-900">
-            <span className="font-medium">{entry.actor?.display_name ?? "Administrador removido"}</span>{" "}
+            <span className="font-medium">{entry.actor?.display_name ?? removedActorLabel(entry.action)}</span>{" "}
             {auditActionLabel(entry.action)}
-            {entry.target && (
+            {entry.target && !isUserAction(entry.action) && (
               <>
                 {" "}
                 <span className="font-medium">{entry.target.display_name}</span>

@@ -70,7 +70,7 @@ export async function getUserStats(): Promise<UserStats> {
   return data as UserStats;
 }
 
-export async function listAuditEntries(params: { targetUserId?: string; limit?: number } = {}) {
+export async function listAuditEntries(params: { targetUserId?: string; limit?: number; adminOnly?: boolean } = {}) {
   const supabase = await createClient();
   let query = supabase
     .from("audit_logs")
@@ -82,6 +82,7 @@ export async function listAuditEntries(params: { targetUserId?: string; limit?: 
     .order("created_at", { ascending: false })
     .limit(params.limit ?? 10);
   if (params.targetUserId) query = query.eq("target_user_id", params.targetUserId);
+  if (params.adminOnly) query = query.like("action", "admin.%");
 
   const { data, error } = await query;
   if (error) throw new Error(`audit_logs: ${error.code}`);

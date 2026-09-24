@@ -13,7 +13,7 @@ import {
   auditQuery,
   parseAuditParams,
 } from "@/features/audit/filters";
-import { auditActionLabel } from "@/features/audit/labels";
+import { auditActionLabel, isUserAction, removedActorLabel } from "@/features/audit/labels";
 import { requireSuperAdmin } from "@/features/auth/session";
 import { formatDateTime } from "@/lib/format/date";
 
@@ -95,9 +95,15 @@ export default async function AuditPage({ searchParams }: PageProps<"/admin/audi
                 <li key={row.id} className="flex flex-col gap-1 px-5 py-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
                   <div className="min-w-0">
                     <p className="text-sm text-slate-900">
-                      <span className="font-medium">{row.actor_name ?? "Administrador removido"}</span>{" "}
+                      {isUserAction(row.action) && row.target_user_id ? (
+                        <Link href={`/admin/usuarios/${row.target_user_id}`} className="font-medium text-brand-700 hover:underline">
+                          {row.target_name ?? row.actor_name}
+                        </Link>
+                      ) : (
+                        <span className="font-medium">{row.actor_name ?? removedActorLabel(row.action)}</span>
+                      )}{" "}
                       {auditActionLabel(row.action)}
-                      {row.target_user_id ? (
+                      {isUserAction(row.action) ? null : row.target_user_id ? (
                         <>
                           {" "}
                           <Link href={`/admin/usuarios/${row.target_user_id}`} className="font-medium text-brand-700 hover:underline">

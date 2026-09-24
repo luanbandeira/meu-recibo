@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LinkButton } from "@/components/ui/link-button";
 import { PageHeader } from "@/components/ui/page-header";
@@ -16,7 +17,10 @@ export const metadata: Metadata = { title: "Meus recibos" };
 export default async function ReceiptsPage({ searchParams }: PageProps<"/recibos">) {
   const { userId, professional, support } = await requireOnboardedUser({ allowSupport: true });
   const emitAction = support ? undefined : <LinkButton href="/emitir">+ Emitir</LinkButton>;
-  const filters = parseHistoryParams(await searchParams);
+  const params = await searchParams;
+  const filters = parseHistoryParams(params);
+  const deletedNumber = typeof params.excluido === "string" && /^REC-\d{4}-\d{6}$/.test(params.excluido) ? params.excluido : null;
+  const deletedAlert = deletedNumber && <Alert tone="success">Recibo {deletedNumber} excluído.</Alert>;
   const [result, templates] = await Promise.all([
     searchReceipts(userId, filters, todayIso(professional.timezone)),
     listTemplateOptions(userId),
@@ -28,6 +32,7 @@ export default async function ReceiptsPage({ searchParams }: PageProps<"/recibos
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
         <PageHeader title="Meus recibos" actions={emitAction} />
+        {deletedAlert}
         <EmptyState
           title={support ? "Nenhum recibo emitido." : "Você ainda não emitiu nenhum recibo."}
           action={support ? undefined : <LinkButton href="/emitir">Emitir primeiro recibo</LinkButton>}
@@ -39,6 +44,7 @@ export default async function ReceiptsPage({ searchParams }: PageProps<"/recibos
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
       <PageHeader title="Meus recibos" actions={emitAction} />
+      {deletedAlert}
       <ReceiptFilters filters={filters} templates={templates} />
 
       {result.total > 0 && (
