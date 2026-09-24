@@ -19,7 +19,8 @@ npx vitest run tests/unit/history.test.ts         # single file
 npx vitest run tests/db -t "histórico"            # single describe/test by name
 npm run test:integration     # RLS isolation against the real DEV Supabase project (.env.local)
 npm run test:e2e             # Playwright (installed Chrome, 375px) against `npm run dev`; E2E_BASE_URL=<url> targets a deploy
-npm run db:push              # apply supabase/migrations to the project in SUPABASE_DB_URL
+npm run db:push              # apply supabase/migrations to the DEV project (.env.local); refuses production
+npm run db:push:prod         # apply to PRODUCTION (.env.production.local) — only after testing in dev and with the user's go-ahead
 npm run admin:create -- --username <u> --name "<Nome>"   # bootstrap Super Admin
 ```
 
@@ -29,7 +30,15 @@ npm run admin:create -- --username <u> --name "<Nome>"   # bootstrap Super Admin
 
 ## Stack
 
-Next.js 16 App Router (`src/proxy.ts`, not middleware), React 19, TypeScript, Tailwind v4, Supabase (`@supabase/ssr` with `getClaims`, publishable/secret keys), zod v4, TipTap 3 (MIT extensions only), `@react-pdf/renderer`, pdfjs-dist, Vitest. Deploy: Vercel (region `gru1`); every push to `main` auto-deploys. The deployed site currently uses the **DEV** Supabase project, so only fictitious data belongs there.
+Next.js 16 App Router (`src/proxy.ts`, not middleware), React 19, TypeScript, Tailwind v4, Supabase (`@supabase/ssr` with `getClaims`, publishable/secret keys), zod v4, TipTap 3 (MIT extensions only), `@react-pdf/renderer`, pdfjs-dist, Vitest. Deploy: Vercel (region `gru1`); every push to `main` auto-deploys.
+
+**Environments.** The Supabase project `fwnxlxgfhskiqxzgbdwo` is **PRODUCTION** and holds real clients. The Vercel site uses it. For now there is **no separate dev project** (the user's decision on 2026-09-24; one will be created later), so `.env.local` points to production. `scripts/production.ts` makes the integration tests, the E2E tests and `npm run db:push` refuse to run against production. Until a dev project exists:
+- validate changes with `npm test` (unit + PGlite, which applies every migration);
+- keep migrations additive;
+- apply them with `npm run db:push:prod` (reads `.env.production.local`) after telling the user;
+- the user checks new flows in production with fictitious accounts.
+
+When a dev project exists, put its keys in `.env.local` and the guarded suites run again.
 
 ## Architecture
 
@@ -66,6 +75,7 @@ Next.js 16 App Router (`src/proxy.ts`, not middleware), React 19, TypeScript, Ta
 ## Rules for this repo
 
 - Use only fictitious data (names, CPF, registration numbers) in code, tests, fixtures and examples. Do not suggest a specific profession as a form placeholder.
-- The DEV project holds the owner's real accounts (`luan`, `luciane`, `teste`). Never delete or modify them. Throwaway E2E users must be named `e2e-*`, and cleanup must also remove their Storage files, since deleting an auth user does not delete them.
+- Never read or print real client data from production. Diagnose production only with aggregates or schema queries.
+- The owner's accounts (`luan`, `luciane`, `teste`) live in production. Never delete or modify them. Throwaway test users exist only in the dev project and must be named `e2e-*` or `teste-*`. Their cleanup must also remove Storage files, since deleting an auth user does not delete them.
 - `SUPABASE_SECRET_KEY` and `SUPABASE_DB_URL` are server/local only. Never prefix them with `NEXT_PUBLIC_`, and never set `SUPABASE_DB_URL` on Vercel.
 - Commit/push only when the user approves. Pushing to `main` deploys.

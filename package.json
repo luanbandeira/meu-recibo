@@ -12,6 +12,7 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "db:push": "tsx scripts/db.ts push",
+    "db:push:prod": "tsx scripts/db.ts push --producao",
     "db:types": "tsx scripts/db.ts types",
     "admin:create": "tsx scripts/create-admin.ts",
     "test:db": "vitest run tests/db",

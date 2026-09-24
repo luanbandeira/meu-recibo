@@ -104,7 +104,7 @@ export default async function AuditPage({ searchParams }: PageProps<"/admin/audi
                             {row.target_name ?? row.target_username}
                           </Link>
                         </>
-                      ) : (
+                      ) : row.action === "admin.user.delete" ? null : (
                         <span className="text-slate-500"> (usuário excluído)</span>
                       )}
                     </p>

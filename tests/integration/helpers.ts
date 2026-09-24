@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { refuseProduction } from "../../scripts/production";
+
+// Estes testes criam e apagam usuários: jamais no banco de produção.
+refuseProduction("Teste de integração");
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;

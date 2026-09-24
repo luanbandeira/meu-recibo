@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { DEFAULT_TEMPLATE_CONTENT, DEFAULT_TEMPLATE_NAME, DEFAULT_TEMPLATE_SETTINGS } from "../../src/features/templates/document/default-template";
 import { extractVariables } from "../../src/features/templates/document/variables";
+import { PRODUCTION_SITE_HOST, refuseProduction } from "../../scripts/production";
 import { writeState, type E2EAccount } from "./state";
 
 // Cria uma profissional fictícia já configurada (com o modelo padrão) e um
@@ -10,6 +11,11 @@ import { writeState, type E2EAccount } from "./state";
 // "e2e-*" para a limpeza reconhecer.
 export default async function globalSetup() {
   if (existsSync(".env.local")) process.loadEnvFile(".env.local");
+  // Cria e apaga contas: nunca no banco de produção nem contra o site oficial.
+  refuseProduction("Teste E2E");
+  if (process.env.E2E_BASE_URL?.includes(PRODUCTION_SITE_HOST)) {
+    throw new Error("Teste E2E recusado: o site oficial usa o banco de produção. Use o servidor local ou um deploy de desenvolvimento.");
+  }
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });

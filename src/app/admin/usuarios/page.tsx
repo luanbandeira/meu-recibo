@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LinkButton } from "@/components/ui/link-button";
 import { PageHeader } from "@/components/ui/page-header";
@@ -52,6 +53,9 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/usua
         }
         actions={<LinkButton href="/admin/usuarios/novo">+ Criar usuário</LinkButton>}
       />
+      {single(params.excluido) === "1" && (
+        <Alert tone="success">Usuário excluído definitivamente, com todos os dados e arquivos. A exclusão ficou registrada na auditoria.</Alert>
+      )}
 
       <div className="flex flex-col gap-3">
         <form role="search" action="/admin/usuarios" className="flex gap-2">

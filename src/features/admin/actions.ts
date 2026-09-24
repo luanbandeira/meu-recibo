@@ -1,14 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { writeAuditLog } from "@/features/audit/log";
 import { generateTemporaryPassword } from "@/features/auth/password";
 import { requireSuperAdmin } from "@/features/auth/session";
-import { usernameToAuthEmail } from "@/features/auth/username";
+import { normalizeUsername, usernameToAuthEmail } from "@/features/auth/username";
 import { publicEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createUserSchema, userIdSchema } from "./schemas";
+import { deleteUserCompletely } from "./user-deletion";
 import { RATE_LIMIT_MESSAGE, withinRateLimit } from "@/lib/security/rate-limit";
 
 // Toda ação: (1) autoriza super admin no servidor, (2) valida entrada,
@@ -166,4 +168,39 @@ export async function setUserStatus(userId: string, status: "active" | "disabled
 
   revalidatePath("/admin", "layout");
   return { ok: true };
+}
+
+export type DeleteUserState = { error?: string };
+
+/**
+ * Exclusão definitiva (LGPD): só de conta já DESATIVADA e com o nome de
+ * usuário digitado como confirmação. Apaga arquivos, dados e a conta; a
+ * auditoria guarda apenas quem excluiu, quando e quantos itens — nenhum dado
+ * pessoal (os registros antigos sobre a pessoa ficam anonimizados).
+ */
+export async function deleteUser(_prev: DeleteUserState, formData: FormData): Promise<DeleteUserState> {
+  const { userId: adminId } = await requireSuperAdmin();
+  if (!(await withinRateLimit("adminUserAction", adminId))) return { error: RATE_LIMIT_MESSAGE };
+
+  const target = await findManagedUser(String(formData.get("userId") ?? ""));
+  if (!target) return { error: "Usuário não encontrado." };
+  if (target.status !== "disabled") return { error: "Desative o usuário antes de excluir." };
+  if (normalizeUsername(String(formData.get("confirmation") ?? "")) !== target.username) {
+    return { error: `Para confirmar, digite exatamente: ${target.username}` };
+  }
+
+  const result = await deleteUserCompletely(createAdminClient(), target.id);
+  if (!result.ok) return { error: result.error };
+
+  await writeAuditLog({
+    actorId: adminId,
+    action: "admin.user.delete",
+    entityType: "user",
+    entityId: target.id,
+    metadata: { receipts: result.receipts, files: result.files },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/usuarios");
+  redirect("/admin/usuarios?excluido=1");
 }

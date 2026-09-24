@@ -56,5 +56,8 @@ describe("detalhes de cada registro", () => {
     );
     expect(auditDetails({ action: "admin.user.create", metadata: { username: "maria" }, support_reason: null })).toBe("Usuário @maria");
     expect(auditDetails({ action: "admin.user.disable", metadata: {}, support_reason: null })).toBeNull();
+    expect(auditDetails({ action: "admin.user.delete", metadata: { receipts: 1, files: 12 }, support_reason: null })).toBe(
+      "Apagados: 1 recibo e 12 arquivos (dados pessoais removidos, LGPD)",
+    );
   });
 });

@@ -6,9 +6,10 @@ import { PageHeader } from "@/components/ui/page-header";
 import { AuditList } from "@/features/admin/components/audit-list";
 import { UserStatusBadge } from "@/features/admin/components/user-status-badge";
 import { userIdSchema } from "@/features/admin/schemas";
-import { getUser, listAuditEntries } from "@/features/admin/queries";
+import { getUser, getUserDataSummary, listAuditEntries } from "@/features/admin/queries";
 import { requireSuperAdmin } from "@/features/auth/session";
 import { formatDateTime } from "@/lib/format/date";
+import { DeleteUser } from "./delete-user";
 import { SupportStart } from "./support-start";
 import { UserActions } from "./user-actions";
 
@@ -22,6 +23,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
 
   const [user, history] = await Promise.all([getUser(id), listAuditEntries({ targetUserId: id, limit: 20 })]);
   if (!user) notFound();
+  const summary = user.status === "disabled" ? await getUserDataSummary(user.id) : { templates: 0, receipts: 0, files: 0 };
 
   const details = [
     { label: "Usuário", value: `@${user.username}` },
@@ -78,6 +80,19 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
         <div className="mt-2">
           <AuditList entries={history} />
         </div>
+      </section>
+
+      <section aria-labelledby="delete-title" className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-red-200">
+        <h2 id="delete-title" className="mb-3 text-base font-semibold text-red-800">
+          Excluir definitivamente
+        </h2>
+        <DeleteUser
+          userId={user.id}
+          username={user.username}
+          displayName={user.display_name}
+          disabled={user.status === "disabled"}
+          summary={summary}
+        />
       </section>
     </div>
   );

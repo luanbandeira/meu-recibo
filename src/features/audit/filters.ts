@@ -84,6 +84,11 @@ export function auditDetails(entry: AuditDetailsInput): string | null {
     }
     case "admin.user.create":
       return typeof meta.username === "string" ? `Usuário @${meta.username}` : null;
+    case "admin.user.delete": {
+      const receipts = typeof meta.receipts === "number" ? meta.receipts : 0;
+      const files = typeof meta.files === "number" ? meta.files : 0;
+      return `Apagados: ${receipts} ${receipts === 1 ? "recibo" : "recibos"} e ${files} ${files === 1 ? "arquivo" : "arquivos"} (dados pessoais removidos, LGPD)`;
+    }
     default:
       return null;
   }

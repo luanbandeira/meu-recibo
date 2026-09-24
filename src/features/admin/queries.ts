@@ -1,4 +1,5 @@
 import "server-only";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { AccountStatus } from "@/features/auth/session";
 
@@ -121,4 +122,23 @@ export async function searchAudit(params: {
   if (error) throw new Error(`admin_list_audit: ${error.code}`);
   const rows = (data ?? []) as (AuditRow & { total_count: number })[];
   return { rows, total: Number(rows[0]?.total_count ?? 0) };
+}
+
+export type UserDataSummary = { templates: number; receipts: number; files: number };
+
+/**
+ * Quanto existe de dados do usuário (só contagens — nada do conteúdo), para a
+ * tela de exclusão. Usa a service role: fora do modo suporte o admin não lê
+ * dados do usuário pela RLS, e aqui não precisa ler.
+ */
+export async function getUserDataSummary(userId: string): Promise<UserDataSummary> {
+  const admin = createAdminClient();
+  const count = (table: "receipts" | "receipt_templates") =>
+    admin.from(table).select("id", { count: "exact", head: true }).eq("user_id", userId).then((r) => r.count ?? 0);
+  const [templates, receipts, files] = await Promise.all([
+    count("receipt_templates"),
+    count("receipts"),
+    admin.rpc("admin_user_storage_objects", { p_user_id: userId }).then((r) => (r.data ?? []).length),
+  ]);
+  return { templates, receipts, files };
 }

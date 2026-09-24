@@ -410,6 +410,33 @@ describe("conta desativada e exclusão (LGPD)", () => {
     await db.query("update public.profiles set status = 'active' where id = $1", [A]);
   });
 
+  it("lista todos os arquivos do usuário (e só dele) e esquece os contadores dele — só o servidor", async () => {
+    await db.query("insert into storage.objects (bucket_id, name) values ('logos', $1), ('logos', $2)", [
+      `${B}/logo.png`,
+      `${A}/logo.png`,
+    ]);
+    await db.query("insert into private.rate_limits values ($1, now(), 1), ($2, now(), 1), ($3, now(), 1)", [
+      `pdfPreview:${B}`,
+      `receiptIssue:${B}`,
+      `pdfPreview:${A}`,
+    ]);
+
+    const { rows: files } = await db.query<{ bucket_id: string; name: string }>(
+      "select * from public.admin_user_storage_objects($1)", [B]);
+    expect(files).toEqual([
+      { bucket_id: "logos", name: `${B}/logo.png` },
+      { bucket_id: "receipts", name: `${B}/${receiptB.receipt_id}/v1.pdf` },
+    ]);
+    const { rows: [{ n }] } = await db.query<{ n: number }>("select public.admin_forget_rate_limits($1) as n", [B]);
+    expect(n).toBe(2);
+    const { rows: left } = await db.query<{ key: string }>("select key from private.rate_limits where key like '%' || $1", [A]);
+    expect(left.map((r) => r.key)).toEqual([`pdfPreview:${A}`]);
+
+    await expect(as(A, "select * from public.admin_user_storage_objects($1)", [B])).rejects.toThrow(/permission denied/);
+    await expect(as(ADMIN, "select * from public.admin_user_storage_objects($1)", [B])).rejects.toThrow(/permission denied/);
+    await expect(as(ADMIN, "select public.admin_forget_rate_limits($1)", [B])).rejects.toThrow(/permission denied/);
+  });
+
   it("excluir usuário apaga tudo dele e mantém auditoria anonimizada", async () => {
     await db.query("delete from auth.users where id = $1", [ADMIN]);
     const audit = await db.query<{ actor_id: string | null }>("select actor_id from public.audit_logs");
