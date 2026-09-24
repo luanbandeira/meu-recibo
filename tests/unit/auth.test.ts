@@ -11,7 +11,7 @@ import { safeRedirectPath } from "@/lib/safe-redirect";
 
 describe("username", () => {
   it("normaliza espaços e maiúsculas", () => {
-    expect(normalizeUsername("  Luciane ")).toBe("luciane");
+    expect(normalizeUsername("  Mariana ")).toBe("mariana");
   });
 
   it.each(["luciane", "ana.paula", "joao_2", "m-s", "abc"])("aceita %s", (u) => {
@@ -23,8 +23,8 @@ describe("username", () => {
   });
 
   it("gera e-mail sintético determinístico", () => {
-    expect(usernameToAuthEmail("Luciane", "login.meurecibo.internal")).toBe(
-      "luciane@login.meurecibo.internal",
+    expect(usernameToAuthEmail("Mariana", "login.meurecibo.internal")).toBe(
+      "mariana@login.meurecibo.internal",
     );
   });
 });
@@ -70,7 +70,7 @@ describe("safeRedirectPath", () => {
 
 describe("sugestão e digitação de usuário", () => {
   it.each([
-    ["Mariana Souza", "luciane"],
+    ["Mariana Conceição", "mariana"],
     ["  José da Silva", "jose"],
     ["Ângela", "angela"],
     ["Al", ""],

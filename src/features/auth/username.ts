@@ -22,7 +22,7 @@ export function sanitizeUsernameInput(raw: string): string {
     .slice(0, 32);
 }
 
-/** Sugestão a partir do nome: primeiro nome, sem acentos ("Mariana Souza" → "luciane"). */
+/** Sugestão a partir do nome: primeiro nome, sem acentos ("Mariana Souza" → "mariana"). */
 export function suggestUsername(fullName: string): string {
   const firstName = fullName.trim().split(/\s+/)[0] ?? "";
   const candidate = sanitizeUsernameInput(firstName).replace(/^[._-]+/, "");

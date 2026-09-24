@@ -31,8 +31,8 @@ const fields = [
 ];
 
 const profile = {
-  full_name: "Profissional Fictícia", company_name: null, profession: "Instrumentadora Cirúrgica",
-  council: "COREN-PE", registration_number: "123456-F", document_type: "cpf" as const,
+  full_name: "Profissional Fictícia", company_name: null, profession: "Fisioterapeuta",
+  council: "CREFITO-1", registration_number: "123456-F", document_type: "cpf" as const,
   document_number: "52998224725", phone: "81998765432", city: "Recife", state: "PE",
 };
 
@@ -128,7 +128,7 @@ describe("formatação no documento", () => {
     const resolve = createResolver({ fields, values: { valor: 50000, pagador: "Fulano" }, profile, receiptNumber: "REC-2026-000001" });
     expect(resolve("valor").text).toBe("R$ 500,00");
     expect(resolve("valor_extenso").text).toBe("quinhentos reais");
-    expect(resolve("profissional_registro").text).toBe("COREN-PE 123456-F");
+    expect(resolve("profissional_registro").text).toBe("CREFITO-1 123456-F");
     expect(resolve("numero_recibo").text).toBe("REC-2026-000001");
     expect(resolve("paciente")).toEqual({ text: "", missing: true });
     expect(resolve("campo_inexistente").missing).toBe(true);

@@ -4,8 +4,8 @@ import { professionalProfileSchema, toProfileRow } from "@/features/profile/sche
 const valid = {
   fullName: "Profissional Fictícia",
   companyName: "",
-  profession: "Instrumentadora Cirúrgica",
-  council: "coren-pe",
+  profession: "Fisioterapeuta",
+  council: "crefito-1",
   registrationNumber: "123456-F",
   document: "529.982.247-25",
   phone: "(81) 99876-5432",
@@ -24,8 +24,8 @@ describe("perfil profissional", () => {
     expect(toProfileRow(parsed)).toEqual({
       full_name: "Profissional Fictícia",
       company_name: null,
-      profession: "Instrumentadora Cirúrgica",
-      council: "COREN-PE",
+      profession: "Fisioterapeuta",
+      council: "CREFITO-1",
       registration_number: "123456-F",
       document_type: "cpf",
       document_number: "52998224725",

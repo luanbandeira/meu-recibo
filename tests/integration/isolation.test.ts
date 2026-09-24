@@ -56,10 +56,9 @@ describe.skipIf(!hasSupabaseEnv)("Isolamento entre usuários (RLS)", () => {
 
   beforeAll(async () => {
     admin = adminClient();
-    userA = await createTestUser(admin, "a");
-    userB = await createTestUser(admin, "b");
-    superAdmin = await createTestUser(admin, "adm", "super_admin");
-    created.push(userA.id, userB.id, superAdmin.id);
+    userA = await createTestUser(admin, "a", created);
+    userB = await createTestUser(admin, "b", created);
+    superAdmin = await createTestUser(admin, "adm", created, "super_admin");
 
     templateA = await setupUser(userA);
     templateB = await setupUser(userB);
@@ -76,7 +75,7 @@ describe.skipIf(!hasSupabaseEnv)("Isolamento entre usuários (RLS)", () => {
 
   afterAll(async () => {
     if (!admin) return;
-    if (userB) await admin.storage.from("receipts").remove([pdfPathB()]);
+    if (userB) await admin.storage.from("receipts").remove([pdfPathB()]).catch(() => {});
     await purgeTestAuditLogs(created);
     for (const id of created) await admin.auth.admin.deleteUser(id);
   });

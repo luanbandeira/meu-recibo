@@ -20,10 +20,15 @@ export function anonClient(): SupabaseClient {
 
 export type TestUser = { id: string; username: string; password: string; client: SupabaseClient };
 
-/** Cria um usuário fictício pela Admin API e devolve um cliente já autenticado. */
+/**
+ * Cria um usuário fictício pela Admin API e devolve um cliente já autenticado.
+ * O id entra em `track` logo após a criação: se algo falhar depois, a limpeza
+ * do teste ainda remove a conta (nada vaza para o banco de desenvolvimento).
+ */
 export async function createTestUser(
   admin: SupabaseClient,
   label: string,
+  track: string[],
   role: "user" | "super_admin" = "user",
 ): Promise<TestUser> {
   const username = `teste-${label}-${randomUUID().slice(0, 8)}`;
@@ -35,6 +40,7 @@ export async function createTestUser(
     app_metadata: { username, display_name: `Teste ${label.toUpperCase()}`, role },
   });
   if (error || !data.user) throw new Error(`createUser: ${error?.message}`);
+  track.push(data.user.id);
 
   const client = anonClient();
   const { error: signInError } = await client.auth.signInWithPassword({

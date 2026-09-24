@@ -230,7 +230,7 @@ profiles ─────────────── 1:1 ── professional_p
 | created_at, updated_at | | |
 
 ### professional_profiles
-`user_id` PK/FK, `full_name`, `company_name` (razão social, opc.), `profession`, `council` (ex.: `COREN-PE`, texto livre com sugestões), `registration_number` (ex.: `123456-F`), `document_type` (`cpf`/`cnpj`), `document_number` (só dígitos), `phone` (só dígitos), `city`, `state` (UF, check de 27 valores), `timezone` (default `America/Sao_Paulo`), `logo_asset_id`, `signature_asset_id`.
+`user_id` PK/FK, `full_name`, `company_name` (razão social, opc.), `profession`, `council` (ex.: `COREN-PE`, texto livre com sugestões), `registration_number` (ex.: `123456`), `document_type` (`cpf`/`cnpj`), `document_number` (só dígitos), `phone` (só dígitos), `city`, `state` (UF, check de 27 valores), `timezone` (default `America/Sao_Paulo`), `logo_asset_id`, `signature_asset_id`.
 
 ### user_assets
 `id`, `user_id`, `kind` (`logo`,`signature`), `variant` (`original`,`processed`), `source_asset_id` (processado → original), `bucket`, `storage_path`, `mime_type`, `size_bytes`, `width`, `height`, `processing` jsonb (parâmetros de recorte/limiar — permite reprocessar), `created_at`.

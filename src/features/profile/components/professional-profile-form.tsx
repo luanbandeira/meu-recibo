@@ -86,7 +86,6 @@ export function ProfessionalProfileForm({
         value={values.profession}
         onChange={(e) => set("profession", e.target.value)}
         error={errors.profession}
-        placeholder="Ex.: Instrumentadora Cirúrgica"
       />
 
       <div className="grid gap-5 sm:grid-cols-2">
@@ -151,7 +150,7 @@ export function ProfessionalProfileForm({
             value={values.registrationNumber}
             onChange={(e) => set("registrationNumber", e.target.value)}
             error={errors.registrationNumber}
-            placeholder="Ex.: 123456-F"
+            placeholder="Ex.: 123456"
           />
         </div>
         <datalist id="council-suggestions">

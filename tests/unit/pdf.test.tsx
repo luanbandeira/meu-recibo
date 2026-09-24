@@ -55,7 +55,7 @@ const values = {
   data_procedimento: "2026-09-20", cidade: "Recife", data_emissao: "2026-09-24",
 };
 const profile = {
-  full_name: "Ana Souza Fictícia", company_name: null, profession: "Instrumentadora Cirúrgica", council: "COREN-PE",
+  full_name: "Ana Souza Fictícia", company_name: null, profession: "Fisioterapeuta", council: "CREFITO-1",
   registration_number: "123456-F", document_type: "cpf" as const, document_number: "52998224725", phone: "81998765432",
   city: "Recife", state: "PE",
 };
@@ -86,7 +86,7 @@ describe("PDF do recibo", () => {
     expect(numPages).toBe(1);
     for (const expected of [
       "Ana Souza Fictícia",
-      "Instrumentadora Cirúrgica - COREN-PE 123456-F",
+      "Fisioterapeuta - CREFITO-1 123456-F",
       "CPF: 529.982.247-25 - Celular: (81) 99876-5432",
       "RECIBO DE HONORÁRIOS",
       "José da Silva Fictício",
@@ -127,7 +127,7 @@ describe("PDF do recibo", () => {
     const { numPages, pages } = await extract(buffer);
     expect(numPages).toBeGreaterThan(1);
     // Nome sob a assinatura aparece inteiro na última página.
-    expect(pages[numPages - 1]).toContain("Ana Souza Fictícia Instrumentadora Cirúrgica - COREN-PE 123456-F");
+    expect(pages[numPages - 1]).toContain("Ana Souza Fictícia Fisioterapeuta - CREFITO-1 123456-F");
   }, 30_000);
 });
 

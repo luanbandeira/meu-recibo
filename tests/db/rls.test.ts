@@ -245,8 +245,8 @@ describe("administração de usuários (Fase 2)", () => {
   });
 
   it("busca sem acento e sem diferenciar maiúsculas; curingas digitados são literais", async () => {
-    await db.query("update public.profiles set display_name = 'Mariana Souza' where id = $1", [B]);
-    expect((await list(ADMIN, "SOUZA")).map((r) => r.username)).toEqual(["usuario-b"]);
+    await db.query("update public.profiles set display_name = 'Mariana Conceição' where id = $1", [B]);
+    expect((await list(ADMIN, "CONCEICAO")).map((r) => r.username)).toEqual(["usuario-b"]);
     expect((await list(ADMIN, "usuario-a")).map((r) => r.username)).toEqual(["usuario-a"]);
     expect(await list(ADMIN, "%")).toEqual([]);
     expect(await list(ADMIN, "_")).toEqual([]);
