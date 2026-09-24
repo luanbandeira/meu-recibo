@@ -31,3 +31,102 @@
     @apply outline-2 outline-offset-2 outline-brand-600;
   }
 }
+
+/* -------------------------------------------------------------------------
+   Página do documento (editor de modelos).
+   A página é um "container": 1pt = 100cqw / 595,28 (largura A4 em pt).
+   Todas as medidas usam var(--pt), como no PDF — a página escala por inteiro
+   em qualquer tela, sem distorcer proporções.
+   ------------------------------------------------------------------------- */
+.doc-page {
+  container-type: inline-size;
+}
+
+.doc-sheet {
+  --pt: calc(100cqw / 595.28);
+  --page-h: calc(841.89 * var(--pt));
+  min-height: var(--page-h);
+  padding: calc(var(--margin) * var(--pt));
+  font-family: var(--doc-font);
+  font-size: calc(var(--fs) * var(--pt));
+  line-height: var(--lh);
+  color: #111827;
+  /* Linha tracejada no início de cada nova página A4. */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--page-h) - 1px),
+    #94a3b8 calc(var(--page-h) - 1px),
+    #94a3b8 var(--page-h)
+  );
+}
+
+/* Modo "Texto" (padrão no celular): letra legível e texto fluindo na largura
+   da tela. Mesmas proporções internas, sem a folha A4 nem as quebras. */
+.doc-sheet.doc-reflow {
+  --pt: 1.3px;
+  min-height: 0;
+  padding: 20px 16px;
+  background-image: none;
+}
+.doc-sheet.doc-reflow .doc-content {
+  min-height: 60vh;
+}
+
+.doc-sheet .doc-content {
+  outline: none;
+  min-height: calc(600 * var(--pt));
+  overflow-wrap: break-word;
+}
+
+.doc-sheet .doc-content > * + * {
+  margin-top: 0;
+}
+
+.doc-sheet p,
+.doc-sheet h1,
+.doc-sheet h2,
+.doc-sheet h3,
+.doc-sheet ul,
+.doc-sheet ol {
+  margin: 0 0 calc(8 * var(--pt));
+}
+
+.doc-sheet h1 {
+  font-size: calc(20 * var(--pt));
+  font-weight: 700;
+}
+.doc-sheet h2 {
+  font-size: calc(16 * var(--pt));
+  font-weight: 700;
+}
+.doc-sheet h3 {
+  font-size: calc(14 * var(--pt));
+  font-weight: 700;
+}
+
+.doc-sheet ul {
+  list-style: disc;
+  padding-left: calc(20 * var(--pt));
+}
+.doc-sheet ol {
+  list-style: decimal;
+  padding-left: calc(20 * var(--pt));
+}
+.doc-sheet li > p {
+  margin-bottom: calc(2 * var(--pt));
+}
+
+.doc-sheet hr {
+  border: 0;
+  border-top: max(1px, calc(0.75 * var(--pt))) solid #374151;
+  margin: calc(8 * var(--pt)) 0;
+}
+.doc-sheet hr.ProseMirror-selectednode {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+}
+
+.doc-sheet strong {
+  font-weight: 700;
+}

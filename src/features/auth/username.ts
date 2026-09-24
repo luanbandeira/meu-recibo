@@ -15,7 +15,7 @@ export function isValidUsername(username: string): boolean {
 export function sanitizeUsernameInput(raw: string): string {
   return raw
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/\p{M}/gu, "")
     .toLowerCase()
     .replace(/\s+/g, ".")
     .replace(/[^a-z0-9._-]/g, "")

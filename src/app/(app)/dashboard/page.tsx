@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { requireOnboardedUser } from "@/features/profile/guards";
 
@@ -16,8 +17,15 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         <Alert tone="success">Configuração concluída! Seus dados já estão prontos para entrar nos recibos.</Alert>
       )}
       <Alert tone="info">
-        A emissão de recibos chega nas próximas fases. Enquanto isso, você pode revisar seus dados, logo e
-        assinatura em Perfil.
+        A emissão de recibos chega na próxima fase. Enquanto isso, você já pode ajustar seus modelos em{" "}
+        <Link href="/modelos" className="font-medium underline">
+          Modelos
+        </Link>{" "}
+        e seus dados em{" "}
+        <Link href="/perfil" className="font-medium underline">
+          Perfil
+        </Link>
+        .
       </Alert>
     </div>
   );

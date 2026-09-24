@@ -345,7 +345,9 @@ Suporte admin é **somente leitura** por construção: as policies de escrita ex
 
 Toolbar horizontal (scroll horizontal no celular): Desfazer/Refazer · Fonte · Tamanho · N/I/S · Alinhamentos · Lista · Espaçamento · **Inserir variável** (busca no catálogo + "Criar campo") · Logo · Assinatura · Separador.
 
-Página: elemento A4 (210 × 297 mm) em unidades `pt`, com as mesmas fontes e margens do PDF, escalado com CSS `zoom` para caber na tela. Botão "Visualizar PDF" mostra o resultado exato.
+Página (implementado na Fase 4): a folha é um *container* CSS e todas as medidas usam `var(--pt)` = largura/595,28 — a página A4 escala por inteiro, sem distorcer, como no PDF. No celular o padrão é o **modo Texto** (`--pt` fixo ≈ 16px para 12pt, texto fluindo na largura); "Ver página A4" alterna para a visão fiel. Linhas tracejadas marcam o início de cada nova página.
+
+O documento é enviado ao servidor como **texto JSON** (o ProseMirror usa objetos sem protótipo nos atributos, que o React não serializa em Server Actions); o servidor faz o parse, limita o tamanho e valida com o schema.
 
 **Fontes:** conjunto fixo de TTF com licença OFL, servidas ao editor (web font) e registradas no react-pdf: *Arimo* (métrica do Arial), *Tinos* (métrica do Times New Roman), *Lora* (serifa elegante), *Inter* (sans moderna) — regular/negrito/itálico/negrito-itálico.
 

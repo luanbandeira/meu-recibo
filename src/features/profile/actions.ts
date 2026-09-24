@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireUser } from "@/features/auth/session";
+import { ensureDefaultTemplate } from "@/features/templates/service";
 import { createClient } from "@/lib/supabase/server";
 import { professionalProfileSchema, toProfileRow } from "./schema";
 import { getProfessionalProfile } from "./queries";
@@ -59,6 +60,7 @@ export async function completeOnboarding() {
     .eq("user_id", userId)
     .is("onboarding_completed_at", null);
   if (error) throw new Error("Não foi possível concluir a configuração.");
+  await ensureDefaultTemplate(userId);
 
   revalidatePath("/", "layout");
   redirect("/dashboard?bem-vindo=1");
