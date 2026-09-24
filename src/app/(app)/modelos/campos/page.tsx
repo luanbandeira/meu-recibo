@@ -7,7 +7,7 @@ import { FieldsManager } from "./fields-manager";
 export const metadata: Metadata = { title: "Campos" };
 
 export default async function FieldsPage() {
-  const { userId } = await requireOnboardedUser();
+  const { userId, support } = await requireOnboardedUser({ allowSupport: true });
   const fields = await listFields(userId);
 
   return (
@@ -17,7 +17,7 @@ export default async function FieldsPage() {
         description="São as informações pedidas ao emitir um recibo. Cada modelo usa só os campos que aparecem nele."
         back={{ href: "/modelos", label: "Modelos" }}
       />
-      <FieldsManager initialFields={fields} />
+      <FieldsManager initialFields={fields} readOnly={Boolean(support)} />
     </div>
   );
 }

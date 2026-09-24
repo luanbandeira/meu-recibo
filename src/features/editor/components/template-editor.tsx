@@ -77,12 +77,15 @@ export function TemplateEditor({
   assets,
   initialCatalog,
   fieldLabels,
+  readOnly = false,
 }: {
   template: EditorTemplate;
   profile: DocumentProfile;
   assets: EditorAssets;
   initialCatalog: CatalogVariable[];
   fieldLabels: Record<string, string>;
+  /** Modo suporte: só visualização — sem barra de ferramentas, sem salvar, sem cópia local. */
+  readOnly?: boolean;
 }) {
   const [catalog, setCatalog] = useState(initialCatalog);
   const [settings, setSettings] = useState(template.settings);
@@ -111,6 +114,7 @@ export function TemplateEditor({
 
   const editor = useEditor({
     immediatelyRender: false,
+    editable: !readOnly,
     extensions: [
       StarterKit.configure({
         blockquote: false,
@@ -133,6 +137,7 @@ export function TemplateEditor({
       attributes: { class: "doc-content", "aria-label": "Conteúdo do modelo", lang: "pt-BR", spellcheck: "true" },
     },
     onCreate: ({ editor: created }) => {
+      if (readOnly) return;
       // Alterações que não chegaram ao servidor (aba fechada, queda de conexão)?
       // Lida ANTES de qualquer transação: a próxima atualização regrava a cópia.
       const backup = readBackup(template.id);
@@ -150,11 +155,13 @@ export function TemplateEditor({
       const firstText = TextSelection.findFrom(created.state.doc.resolve(0), 1, true);
       if (firstText) created.view.dispatch(created.state.tr.setSelection(firstText).setMeta("addToHistory", false));
     },
-    onUpdate: () => actionsRef.current.markDirty(),
+    onUpdate: () => {
+      if (!readOnly) actionsRef.current.markDirty();
+    },
   });
 
   const save = useCallback(async () => {
-    if (!editor || blockedRef.current) return;
+    if (!editor || blockedRef.current || readOnly) return;
     if (savingRef.current) {
       pendingRef.current = true;
       return;
@@ -190,10 +197,10 @@ export function TemplateEditor({
       setError(result.error);
       setStatus("error");
     }
-  }, [editor, template.id]);
+  }, [editor, template.id, readOnly]);
 
   const markDirty = useCallback(() => {
-    if (!editor) return;
+    if (!editor || readOnly) return;
     pendingRef.current = true;
     setStatus((s) => (s === "saving" ? s : "dirty"));
     writeBackup(template.id, {
@@ -204,7 +211,7 @@ export function TemplateEditor({
     });
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => actionsRef.current.save(), AUTOSAVE_DELAY);
-  }, [editor, template.id]);
+  }, [editor, template.id, readOnly]);
 
   useEffect(() => {
     actionsRef.current = { markDirty, save };
@@ -276,25 +283,36 @@ export function TemplateEditor({
           <Link href="/modelos" className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-slate-600 hover:text-slate-900">
             ← Modelos
           </Link>
-          <label htmlFor="template-name" className="sr-only">
-            Nome do modelo
-          </label>
-          <input
-            id="template-name"
-            value={name}
-            maxLength={100}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={commitName}
-            onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-            className="order-last min-h-11 w-full min-w-0 rounded-lg bg-transparent px-2 text-lg font-semibold text-slate-900 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-600 sm:order-none sm:w-auto sm:flex-1"
-          />
-          <span
-            role="status"
-            className={`ml-auto flex items-center gap-1.5 text-sm ${status === "error" ? "text-red-700" : "text-slate-500"}`}
-          >
-            <span aria-hidden="true" className={`size-2 rounded-full ${status === "saved" ? "bg-emerald-500" : status === "error" ? "bg-red-500" : "bg-amber-400"}`} />
-            {statusText[status]}
-          </span>
+          {readOnly ? (
+            <>
+              <h1 className="order-last w-full min-w-0 truncate px-2 text-lg font-semibold text-slate-900 sm:order-none sm:w-auto sm:flex-1">
+                {template.name}
+              </h1>
+              <span className="ml-auto text-sm font-medium text-amber-800">Somente leitura</span>
+            </>
+          ) : (
+            <>
+              <label htmlFor="template-name" className="sr-only">
+                Nome do modelo
+              </label>
+              <input
+                id="template-name"
+                value={name}
+                maxLength={100}
+                onChange={(e) => setName(e.target.value)}
+                onBlur={commitName}
+                onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+                className="order-last min-h-11 w-full min-w-0 rounded-lg bg-transparent px-2 text-lg font-semibold text-slate-900 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-600 sm:order-none sm:w-auto sm:flex-1"
+              />
+              <span
+                role="status"
+                className={`ml-auto flex items-center gap-1.5 text-sm ${status === "error" ? "text-red-700" : "text-slate-500"}`}
+              >
+                <span aria-hidden="true" className={`size-2 rounded-full ${status === "saved" ? "bg-emerald-500" : status === "error" ? "bg-red-500" : "bg-amber-400"}`} />
+                {statusText[status]}
+              </span>
+            </>
+          )}
           <button
             type="button"
             onClick={() => setZoom(zoom === "text" ? "fit" : "text")}
@@ -333,32 +351,34 @@ export function TemplateEditor({
         )}
 
         {/* Toolbar fixa ao rolar */}
-        <div className="sticky top-16 z-20 rounded-xl bg-white shadow-xs ring-1 ring-slate-200">
-          {editor && (
-            <Toolbar
-              editor={editor}
-              onOpenVariables={() => setPickerOpen((open) => !open)}
-              onTogglePage={() => setPageOpen((open) => !open)}
-              pageOpen={pageOpen}
-            />
-          )}
-          {pickerOpen && (
-            <div className="absolute left-2 right-2 top-full z-30 mt-2 sm:left-auto">
-              <VariablePicker
-                catalog={catalog}
-                onClose={() => setPickerOpen(false)}
-                onFieldCreated={(variable) => setCatalog((c) => [...c.filter((v) => v.key !== variable.key), variable])}
-                onPick={(key) => {
-                  editor?.chain().focus().insertVariable(key).run();
-                  setPickerOpen(false);
-                }}
+        {!readOnly && (
+          <div className="sticky top-16 z-20 rounded-xl bg-white shadow-xs ring-1 ring-slate-200">
+            {editor && (
+              <Toolbar
+                editor={editor}
+                onOpenVariables={() => setPickerOpen((open) => !open)}
+                onTogglePage={() => setPageOpen((open) => !open)}
+                pageOpen={pageOpen}
               />
-            </div>
-          )}
-          {pageOpen && (
-            <PageSettings settings={settings} onChange={updateSettings} zoom={zoom} onZoom={setZoom} />
-          )}
-        </div>
+            )}
+            {pickerOpen && (
+              <div className="absolute left-2 right-2 top-full z-30 mt-2 sm:left-auto">
+                <VariablePicker
+                  catalog={catalog}
+                  onClose={() => setPickerOpen(false)}
+                  onFieldCreated={(variable) => setCatalog((c) => [...c.filter((v) => v.key !== variable.key), variable])}
+                  onPick={(key) => {
+                    editor?.chain().focus().insertVariable(key).run();
+                    setPickerOpen(false);
+                  }}
+                />
+              </div>
+            )}
+            {pageOpen && (
+              <PageSettings settings={settings} onChange={updateSettings} zoom={zoom} onZoom={setZoom} />
+            )}
+          </div>
+        )}
 
         {/* Página A4 proporcional: 1pt = largura/595 */}
         <div className={zoom === "real" ? "overflow-x-auto pb-2" : ""}>

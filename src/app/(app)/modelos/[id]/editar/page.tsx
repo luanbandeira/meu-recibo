@@ -15,7 +15,8 @@ import { getTemplate } from "@/features/templates/queries";
 export const metadata: Metadata = { title: "Editar modelo" };
 
 export default async function EditTemplatePage({ params }: PageProps<"/modelos/[id]/editar">) {
-  const { userId, professional } = await requireOnboardedUser();
+  // No modo suporte o editor abre somente para leitura (sem salvar nada).
+  const { userId, professional, support } = await requireOnboardedUser({ allowSupport: true });
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
 
@@ -43,6 +44,7 @@ export default async function EditTemplatePage({ params }: PageProps<"/modelos/[
         assets={{ logoUrl, signatureUrl }}
         initialCatalog={buildCatalog(fields)}
         fieldLabels={Object.fromEntries(fields.map((f) => [f.key, f.label]))}
+        readOnly={Boolean(support)}
       />
     </div>
   );

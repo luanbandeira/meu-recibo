@@ -86,3 +86,39 @@ export async function listAuditEntries(params: { targetUserId?: string; limit?: 
   if (error) throw new Error(`audit_logs: ${error.code}`);
   return (data ?? []) as unknown as AuditEntry[];
 }
+
+export type AuditRow = {
+  id: number;
+  action: string;
+  created_at: string;
+  actor_name: string | null;
+  target_user_id: string | null;
+  target_name: string | null;
+  target_username: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  metadata: Record<string, unknown> | null;
+  support_reason: string | null;
+};
+
+/** Tela de auditoria: filtros e paginação no banco (RPC só para super admin). */
+export async function searchAudit(params: {
+  actionPrefix: string | null;
+  targetUserId: string | null;
+  from: string | null;
+  offset: number;
+  limit: number;
+}): Promise<{ rows: AuditRow[]; total: number }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_list_audit", {
+    p_action_prefix: params.actionPrefix,
+    p_target_user_id: params.targetUserId,
+    p_from: params.from,
+    p_to: null,
+    p_limit: params.limit,
+    p_offset: params.offset,
+  });
+  if (error) throw new Error(`admin_list_audit: ${error.code}`);
+  const rows = (data ?? []) as (AuditRow & { total_count: number })[];
+  return { rows, total: Number(rows[0]?.total_count ?? 0) };
+}

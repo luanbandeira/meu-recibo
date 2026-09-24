@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Alert } from "@/components/ui/alert";
 import { LinkButton } from "@/components/ui/link-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { AuditList } from "@/features/admin/components/audit-list";
@@ -8,8 +9,9 @@ import { requireSuperAdmin } from "@/features/auth/session";
 
 export const metadata: Metadata = { title: "Administração" };
 
-export default async function AdminHomePage() {
+export default async function AdminHomePage({ searchParams }: PageProps<"/admin">) {
   await requireSuperAdmin();
+  const supportEnded = (await searchParams).suporte === "encerrado";
   const [stats, recent] = await Promise.all([getUserStats(), listAuditEntries({ limit: 8 })]);
 
   const cards = [
@@ -24,6 +26,7 @@ export default async function AdminHomePage() {
         title="Visão geral"
         actions={<LinkButton href="/admin/usuarios/novo">+ Criar usuário</LinkButton>}
       />
+      {supportEnded && <Alert tone="info">O modo de suporte foi encerrado ou expirou (30 minutos). Para continuar, abra-o de novo na ficha do usuário.</Alert>}
 
       <section aria-label="Resumo de usuários" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {cards.map((card) => (
@@ -47,9 +50,14 @@ export default async function AdminHomePage() {
       )}
 
       <section aria-labelledby="recent-title" className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-slate-200">
-        <h2 id="recent-title" className="text-base font-semibold text-slate-900">
-          Últimas ações administrativas
-        </h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="recent-title" className="text-base font-semibold text-slate-900">
+            Últimas ações administrativas
+          </h2>
+          <Link href="/admin/auditoria" className="text-sm font-medium text-brand-700 hover:underline">
+            Ver auditoria completa →
+          </Link>
+        </div>
         <div className="mt-2">
           <AuditList entries={recent} />
         </div>

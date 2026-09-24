@@ -1,10 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { writeAuditLog } from "@/features/audit/log";
 import { getSession } from "@/features/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
 // Entrega o PDF salvo. Tudo pela sessão do usuário: a RLS decide se ele
 // pode ver o recibo e o arquivo. Nunca expõe URL pública do storage.
+// Super admin só chega aqui com sessão de suporte aberta (senão a RLS não
+// devolve nada) e cada PDF entregue a ele fica na auditoria.
 
 const noStore = { "Cache-Control": "private, no-store" };
 
@@ -23,14 +26,14 @@ export async function GET(request: NextRequest, { params }: RouteContext<"/api/r
   const supabase = await createClient();
   const { data: receipt } = await supabase
     .from("receipts")
-    .select("id, current_version_no")
+    .select("id, user_id, number, current_version_no")
     .eq("id", id)
     .maybeSingle();
   if (!receipt) return NextResponse.json({ error: "Não encontrado." }, { status: 404, headers: noStore });
 
   const { data: version } = await supabase
     .from("receipt_versions")
-    .select("pdf_path, file_name")
+    .select("version_no, pdf_path, file_name")
     .eq("receipt_id", id)
     .eq("version_no", versionNo && versionNo > 0 ? versionNo : receipt.current_version_no)
     .maybeSingle();
@@ -40,7 +43,20 @@ export async function GET(request: NextRequest, { params }: RouteContext<"/api/r
   if (!file) return NextResponse.json({ error: "Arquivo indisponível." }, { status: 404, headers: noStore });
 
   const fileName = version.file_name ?? "recibo.pdf";
-  const disposition = request.nextUrl.searchParams.get("download") === "1" ? "attachment" : "inline";
+  const download = request.nextUrl.searchParams.get("download") === "1";
+  const disposition = download ? "attachment" : "inline";
+
+  if (session.profile.role === "super_admin") {
+    // Número e versão identificam o documento sem expor dados pessoais.
+    await writeAuditLog({
+      actorId: session.userId,
+      action: "admin.support.view_pdf",
+      targetUserId: receipt.user_id,
+      entityType: "receipt",
+      entityId: receipt.id,
+      metadata: { number: receipt.number, version: version.version_no, download },
+    });
+  }
 
   return new NextResponse(file.stream(), {
     headers: {

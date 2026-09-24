@@ -40,7 +40,7 @@ function DefaultValueInput({
   );
 }
 
-export function FieldsManager({ initialFields }: { initialFields: FieldDefinition[] }) {
+export function FieldsManager({ initialFields, readOnly = false }: { initialFields: FieldDefinition[]; readOnly?: boolean }) {
   const [fields, setFields] = useState(initialFields);
   const [editing, setEditing] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -52,7 +52,7 @@ export function FieldsManager({ initialFields }: { initialFields: FieldDefinitio
 
   return (
     <div className="flex flex-col gap-6">
-      {creating ? (
+      {readOnly ? null : creating ? (
         <NewFieldForm
           onCancel={() => setCreating(false)}
           onCreated={(field) => {
@@ -74,6 +74,7 @@ export function FieldsManager({ initialFields }: { initialFields: FieldDefinitio
             ) : (
               <FieldRow
                 field={field}
+                readOnly={readOnly}
                 onEdit={() => setEditing(field.id)}
                 onArchive={async () => {
                   const result = await setFieldArchived(field.id, true);
@@ -96,15 +97,17 @@ export function FieldsManager({ initialFields }: { initialFields: FieldDefinitio
                 <span className="text-sm text-slate-600">
                   {field.label} <code className="text-xs">{`{{${field.key}}}`}</code>
                 </span>
-                <Button
-                  variant="ghost"
-                  onClick={async () => {
-                    const result = await setFieldArchived(field.id, false);
-                    if (result.ok) replace({ ...field, archived_at: null });
-                  }}
-                >
-                  Restaurar
-                </Button>
+                {!readOnly && (
+                  <Button
+                    variant="ghost"
+                    onClick={async () => {
+                      const result = await setFieldArchived(field.id, false);
+                      if (result.ok) replace({ ...field, archived_at: null });
+                    }}
+                  >
+                    Restaurar
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
@@ -114,7 +117,17 @@ export function FieldsManager({ initialFields }: { initialFields: FieldDefinitio
   );
 }
 
-function FieldRow({ field, onEdit, onArchive }: { field: FieldDefinition; onEdit: () => void; onArchive: () => void }) {
+function FieldRow({
+  field,
+  readOnly,
+  onEdit,
+  onArchive,
+}: {
+  field: FieldDefinition;
+  readOnly: boolean;
+  onEdit: () => void;
+  onArchive: () => void;
+}) {
   const [confirm, setConfirm] = useState(false);
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -130,7 +143,7 @@ function FieldRow({ field, onEdit, onArchive }: { field: FieldDefinition; onEdit
         </p>
       </div>
       <div className="flex shrink-0 gap-2">
-        {confirm ? (
+        {readOnly ? null : confirm ? (
           <>
             <Button variant="danger" onClick={onArchive}>Confirmar</Button>
             <Button variant="ghost" onClick={() => setConfirm(false)}>Cancelar</Button>

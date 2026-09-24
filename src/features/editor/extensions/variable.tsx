@@ -13,7 +13,8 @@ declare module "@tiptap/core" {
   }
 }
 
-function VariableChip({ node, selected, updateAttributes }: ReactNodeViewProps) {
+function VariableChip({ node, selected: isSelected, editor, updateAttributes }: ReactNodeViewProps) {
+  const selected = isSelected && editor.isEditable;
   const { catalog, fieldLabels } = useEditorData();
   const key = node.attrs.key as string;
   const entry = catalog.find((v) => v.key === key);

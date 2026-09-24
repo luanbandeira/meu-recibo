@@ -7,14 +7,15 @@ export type AuditAction =
   | "admin.support.end"
   | "admin.support.view_pdf";
 
+// Frases no formato "<quem> <ação> <usuário afetado>".
 const labels: Record<AuditAction, string> = {
-  "admin.user.create": "Criou o usuário",
-  "admin.user.reset_access": "Redefiniu o acesso",
-  "admin.user.disable": "Desativou o usuário",
-  "admin.user.enable": "Reativou o usuário",
-  "admin.support.start": "Entrou em modo de suporte",
-  "admin.support.end": "Saiu do modo de suporte",
-  "admin.support.view_pdf": "Visualizou PDF em modo de suporte",
+  "admin.user.create": "criou o usuário",
+  "admin.user.reset_access": "redefiniu o acesso de",
+  "admin.user.disable": "desativou",
+  "admin.user.enable": "reativou",
+  "admin.support.start": "entrou no modo de suporte de",
+  "admin.support.end": "saiu do modo de suporte de",
+  "admin.support.view_pdf": "abriu um PDF de",
 };
 
 export function auditActionLabel(action: string): string {

@@ -7,6 +7,7 @@ export function AdminNav() {
       items={[
         { href: "/admin", label: "Visão geral", exact: true },
         { href: "/admin/usuarios", label: "Usuários" },
+        { href: "/admin/auditoria", label: "Auditoria" },
       ]}
     />
   );

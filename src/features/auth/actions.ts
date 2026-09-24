@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { newPasswordSchema } from "./password";
-import { homePathFor, requirePendingPasswordChange } from "./session";
+import { getSession, homePathFor, requirePendingPasswordChange } from "./session";
 
 export type ChangePasswordState = {
   fieldErrors?: { password?: string; confirmPassword?: string };
@@ -59,6 +59,9 @@ export async function changeTemporaryPassword(
 
 export async function signOut() {
   const supabase = await createClient();
+  // Admin saindo com modo suporte aberto: encerra (e audita) antes de sair.
+  const session = await getSession();
+  if (session?.profile.role === "super_admin") await supabase.rpc("end_support_session");
   await supabase.auth.signOut();
   redirect("/login");
 }

@@ -12,7 +12,7 @@ import { TemplateActions } from "./template-actions";
 export const metadata: Metadata = { title: "Modelos" };
 
 export default async function TemplatesPage({ searchParams }: PageProps<"/modelos">) {
-  const { userId } = await requireOnboardedUser();
+  const { userId, support } = await requireOnboardedUser({ allowSupport: true });
   const archived = (await searchParams).arquivados === "1";
   const templates = await listTemplates(userId, archived ? "archived" : "active");
 
@@ -21,7 +21,7 @@ export default async function TemplatesPage({ searchParams }: PageProps<"/modelo
       <PageHeader
         title={archived ? "Modelos arquivados" : "Modelos"}
         description={archived ? "Arquivados não aparecem na emissão. Restaure ou exclua." : "Configure uma vez, emita em segundos."}
-        actions={!archived && <LinkButton href="/modelos/novo">+ Novo modelo</LinkButton>}
+        actions={!archived && !support && <LinkButton href="/modelos/novo">+ Novo modelo</LinkButton>}
       />
 
       <nav aria-label="Filtros" className="flex flex-wrap gap-2 text-sm">
@@ -51,7 +51,7 @@ export default async function TemplatesPage({ searchParams }: PageProps<"/modelo
           <EmptyState
             title="Criar meu primeiro modelo"
             description="Comece pelo recibo padrão e ajuste ao seu jeito."
-            action={<LinkButton href="/modelos/novo">Criar modelo</LinkButton>}
+            action={support ? undefined : <LinkButton href="/modelos/novo">Criar modelo</LinkButton>}
           />
         )
       ) : (
@@ -75,7 +75,7 @@ export default async function TemplatesPage({ searchParams }: PageProps<"/modelo
                     {fields === 1 ? "1 campo" : `${fields} campos`} na emissão · editado em {formatDateTime(template.updated_at)}
                   </p>
                 </div>
-                <TemplateActions id={template.id} name={template.name} archived={archived} />
+                {!support && <TemplateActions id={template.id} name={template.name} archived={archived} />}
               </li>
             );
           })}

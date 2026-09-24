@@ -8,30 +8,39 @@ import { countReceiptsThisMonth, listRecentReceipts } from "@/features/receipts/
 export const metadata: Metadata = { title: "Início" };
 
 export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
-  const { userId, professional } = await requireOnboardedUser();
-  const welcome = (await searchParams)["bem-vindo"] === "1";
+  const { userId, professional, support } = await requireOnboardedUser({ allowSupport: true });
+  const query = await searchParams;
+  const welcome = query["bem-vindo"] === "1";
+  const blockedInSupport = support && query.suporte === "somente-leitura";
   const firstName = professional.full_name.split(" ")[0];
   const [monthCount, recent] = await Promise.all([countReceiptsThisMonth(userId), listRecentReceipts(userId, 3)]);
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Olá, {firstName}</h1>
-      {welcome && (
+      <h1 className="text-2xl font-semibold text-slate-900">
+        {support ? `Ambiente de ${professional.full_name}` : `Olá, ${firstName}`}
+      </h1>
+      {blockedInSupport && (
+        <Alert tone="info">Essa tela ou ação não está disponível no modo de suporte (somente leitura).</Alert>
+      )}
+      {welcome && !support && (
         <Alert tone="success">Configuração concluída! Seus dados já estão prontos para entrar nos recibos.</Alert>
       )}
 
-      <Link
-        href="/emitir"
-        className="flex items-center justify-between gap-4 rounded-2xl bg-brand-600 p-6 text-white shadow-sm transition hover:bg-brand-700 active:bg-brand-800"
-      >
-        <span>
-          <span className="block text-xl font-semibold">+ Emitir recibo</span>
-          <span className="block text-sm text-brand-100">Escolha o modelo e preencha só o que muda.</span>
-        </span>
-        <span aria-hidden="true" className="text-3xl">
-          →
-        </span>
-      </Link>
+      {!support && (
+        <Link
+          href="/emitir"
+          className="flex items-center justify-between gap-4 rounded-2xl bg-brand-600 p-6 text-white shadow-sm transition hover:bg-brand-700 active:bg-brand-800"
+        >
+          <span>
+            <span className="block text-xl font-semibold">+ Emitir recibo</span>
+            <span className="block text-sm text-brand-100">Escolha o modelo e preencha só o que muda.</span>
+          </span>
+          <span aria-hidden="true" className="text-3xl">
+            →
+          </span>
+        </Link>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <Link href="/recibos" className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-slate-200 hover:ring-brand-300">

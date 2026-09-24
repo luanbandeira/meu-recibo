@@ -1,10 +1,12 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { BrandMark } from "@/components/brand";
 import { SignOutButton } from "@/components/sign-out-button";
 
-export function AppHeader({ homeHref, userLabel }: { homeHref: string; userLabel: string }) {
+export function AppHeader({ homeHref, userLabel, banner }: { homeHref: string; userLabel: string; banner?: ReactNode }) {
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+      {banner}
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-4">
         <Link href={homeHref} className="rounded-lg" aria-label="Início">
           <BrandMark />

@@ -4,12 +4,13 @@ import type { SavedProcessing } from "@/features/assets/components/signature-edi
 import { ProfessionalProfileForm } from "@/features/profile/components/professional-profile-form";
 import { ProfileLogo, ProfileSignature } from "@/features/profile/components/profile-assets";
 import { requireOnboardedUser } from "@/features/profile/guards";
-import { getSourceAsset, signedAssetUrl } from "@/features/profile/queries";
+import { getSourceAsset, signedAssetUrl, type ProfessionalProfile } from "@/features/profile/queries";
+import { formatCpfCnpj, formatPhone } from "@/lib/format/br";
 
 export const metadata: Metadata = { title: "Perfil" };
 
 export default async function ProfilePage() {
-  const { userId, professional } = await requireOnboardedUser();
+  const { userId, professional, support } = await requireOnboardedUser({ allowSupport: true });
 
   const [logoUrl, signatureUrl, signatureOriginal] = await Promise.all([
     signedAssetUrl(professional.logo),
@@ -19,6 +20,10 @@ export default async function ProfilePage() {
   const signatureOriginalUrl = await signedAssetUrl(signatureOriginal);
 
   const card = "rounded-2xl bg-white p-5 shadow-xs ring-1 ring-slate-200 sm:p-6";
+
+  if (support) {
+    return <ReadOnlyProfile professional={professional} logoUrl={logoUrl} signatureUrl={signatureUrl} card={card} />;
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
@@ -61,6 +66,70 @@ export default async function ProfilePage() {
           originalUrl={signatureOriginalUrl}
           savedProcessing={(professional.signature?.processing as SavedProcessing) ?? null}
         />
+      </section>
+    </div>
+  );
+}
+
+/** Modo suporte: os mesmos dados, sem formulários. */
+function ReadOnlyProfile({
+  professional,
+  logoUrl,
+  signatureUrl,
+  card,
+}: {
+  professional: ProfessionalProfile;
+  logoUrl: string | null;
+  signatureUrl: string | null;
+  card: string;
+}) {
+  const rows: [string, string | null][] = [
+    ["Nome completo", professional.full_name],
+    ["Nome da empresa", professional.company_name],
+    ["Profissão", professional.profession],
+    ["Conselho", professional.council],
+    ["Registro", professional.registration_number],
+    [professional.document_type === "cnpj" ? "CNPJ" : "CPF", professional.document_number && formatCpfCnpj(professional.document_number)],
+    ["Telefone", professional.phone && formatPhone(professional.phone)],
+    ["Cidade", [professional.city, professional.state].filter(Boolean).join(" - ") || null],
+  ];
+
+  return (
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+      <PageHeader title="Perfil profissional" description="Somente leitura no modo de suporte." />
+      <section aria-labelledby="dados-title" className={card}>
+        <h2 id="dados-title" className="mb-4 text-lg font-semibold text-slate-900">
+          Dados profissionais
+        </h2>
+        <dl className="grid gap-4 sm:grid-cols-2">
+          {rows.map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
+              <dd className="mt-0.5 break-words text-sm text-slate-900">{value || "—"}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+      <section aria-labelledby="imagens-title" className={card}>
+        <h2 id="imagens-title" className="mb-4 text-lg font-semibold text-slate-900">
+          Logo e assinatura
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[
+            ["Logo", logoUrl],
+            ["Assinatura e carimbo", signatureUrl],
+          ].map(([label, url]) => (
+            <figure key={label} className="flex flex-col gap-2">
+              <figcaption className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</figcaption>
+              {url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- URL assinada temporária de arquivo privado
+                <img src={url} alt={label ?? ""} className="max-h-40 w-auto self-start rounded-lg object-contain ring-1 ring-slate-200" />
+              ) : (
+                <p className="text-sm text-slate-500">Não enviada.</p>
+              )}
+            </figure>
+          ))}
+        </div>
       </section>
     </div>
   );

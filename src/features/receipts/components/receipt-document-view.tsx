@@ -22,12 +22,15 @@ export function ReceiptDocumentView({
   hasPdf,
   fileName,
   highlightShare,
+  readOnly = false,
 }: {
   receiptId: string;
   receiptNumber: string;
   hasPdf: boolean;
   fileName: string | null;
   highlightShare: boolean;
+  /** Modo suporte: só visualizar/baixar (cada acesso ao PDF é auditado). */
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [data, setData] = useState<ArrayBuffer | null>(null);
@@ -57,7 +60,7 @@ export function ReceiptDocumentView({
     return () => controller.abort();
   }, [hasPdf, pdfUrl, fileName, receiptNumber]);
 
-  const shareSupported = canShareFile(file);
+  const shareSupported = !readOnly && canShareFile(file);
 
   async function onShare() {
     if (!file) return;
@@ -67,6 +70,10 @@ export function ReceiptDocumentView({
       downloadFile(file);
       setNotice("Não foi possível abrir o compartilhamento neste aparelho. O PDF foi baixado — envie pelo app que preferir.");
     }
+  }
+
+  if (!hasPdf && readOnly) {
+    return <Alert tone="info">O PDF deste recibo ainda não foi gerado. Só o próprio usuário pode gerá-lo.</Alert>;
   }
 
   if (!hasPdf) {
@@ -118,7 +125,7 @@ export function ReceiptDocumentView({
         {highlightShare && shareSupported && (
           <p className="text-center text-xs text-slate-600">Envie pelo WhatsApp, e-mail ou outro app do seu celular.</p>
         )}
-        {!shareSupported && file && (
+        {!shareSupported && file && !readOnly && (
           <p className="text-center text-xs text-slate-500">
             Este navegador não compartilha arquivos direto. Baixe o PDF e envie pelo app que preferir.
           </p>

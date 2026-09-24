@@ -350,6 +350,25 @@ describe("administração de usuários (Fase 2)", () => {
     await db.query("update public.profiles set status = 'active' where id = $1", [B]);
   });
 
+  it("auditoria: só super admin lê; filtra por ação, usuário e período; traz o motivo do suporte", async () => {
+    type AuditRow = { action: string; target_username: string | null; support_reason: string | null; total_count: string };
+    const audit = (uid: string, ...args: unknown[]) =>
+      as<AuditRow>(uid, "select * from public.admin_list_audit($1, $2, $3, $4)", [...args, null, null, null, null].slice(0, 4));
+
+    await expect(audit(A)).rejects.toThrow(/Acesso negado/);
+    await expect(as(A, "select * from public.support_sessions")).resolves.toEqual([]);
+
+    const support = await audit(ADMIN, "admin.support");
+    expect(support.map((r) => r.action)).toEqual(["admin.support.end", "admin.support.start"]);
+    expect(support.every((r) => r.support_reason === "suporte" && r.target_username === "usuario-b")).toBe(true);
+    expect(Number(support[0].total_count)).toBe(2);
+
+    expect(await audit(ADMIN, null, A)).toEqual([]);
+    expect(await audit(ADMIN, "admin.support", B, "2999-01-01")).toEqual([]);
+    expect(await audit(ADMIN, "admin.sup")).toEqual([]); // prefixo casa por segmento inteiro
+    expect((await audit(ADMIN, "admin.support.start")).map((r) => r.action)).toEqual(["admin.support.start"]);
+  });
+
   it("detalhe não expõe o próprio admin nem outros admins", async () => {
     expect(await as(ADMIN, "select * from public.admin_get_user($1)", [ADMIN])).toEqual([]);
     const [user] = await as<{ username: string }>(ADMIN, "select * from public.admin_get_user($1)", [A]);

@@ -355,6 +355,35 @@ describe.skipIf(!hasSupabaseEnv)("Isolamento entre usuários (RLS)", () => {
         .eq("entity_id", sessionId)
         .order("id");
       expect(audit?.map((a) => a.action)).toEqual(["admin.support.start", "admin.support.end"]);
+
+      // Tela de auditoria: o admin vê o acesso com o motivo; usuário comum não vê nada.
+      const listed = await superAdmin.client.rpc("admin_list_audit", {
+        p_action_prefix: "admin.support.start",
+        p_target_user_id: userB.id,
+      });
+      expect(listed.error).toBeNull();
+      expect(listed.data?.[0]).toMatchObject({ support_reason: "teste automatizado", target_username: userB.username });
+      const denied = await userA.client.rpc("admin_list_audit", {});
+      expect(denied.error).not.toBeNull();
+      const sessions = await userA.client.from("support_sessions").select("id");
+      expect(sessions.data ?? []).toEqual([]);
+    });
+
+    it("sessão de suporte expirada não libera mais nada", async () => {
+      const { data: sessionId } = await superAdmin.client.rpc("start_support_session", {
+        p_target_user_id: userB.id,
+        p_reason: "teste de expiração",
+      });
+      const expire = await admin
+        .from("support_sessions")
+        .update({ expires_at: new Date(Date.now() - 3_600_000).toISOString() })
+        .eq("id", sessionId)
+        .select("id");
+      expect(expire.error).toBeNull();
+      expect(expire.data).toHaveLength(1);
+      const read = await superAdmin.client.from("receipts").select("id").eq("user_id", userB.id);
+      expect(read.data).toEqual([]);
+      await superAdmin.client.rpc("end_support_session");
     });
   });
 

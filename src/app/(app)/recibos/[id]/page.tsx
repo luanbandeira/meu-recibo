@@ -13,7 +13,7 @@ import { formatBRL } from "@/lib/format/money";
 export const metadata: Metadata = { title: "Recibo" };
 
 export default async function ReceiptPage({ params, searchParams }: PageProps<"/recibos/[id]">) {
-  const { userId } = await requireOnboardedUser();
+  const { userId, support } = await requireOnboardedUser({ allowSupport: true });
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
 
@@ -35,16 +35,18 @@ export default async function ReceiptPage({ params, searchParams }: PageProps<"/
         description={`${receipt.number} · ${receipt.template_name}${receipt.current_version_no > 1 ? ` · versão ${receipt.current_version_no}` : ""}`}
         back={{ href: "/recibos", label: "Meus recibos" }}
         actions={
-          <>
-            <LinkButton href={duplicateHref} variant="secondary">
-              Duplicar
-            </LinkButton>
-            {receipt.status === "issued" && (
-              <LinkButton href={`/recibos/${receipt.id}/corrigir`} variant="secondary">
-                Corrigir
+          !support && (
+            <>
+              <LinkButton href={duplicateHref} variant="secondary">
+                Duplicar
               </LinkButton>
-            )}
-          </>
+              {receipt.status === "issued" && (
+                <LinkButton href={`/recibos/${receipt.id}/corrigir`} variant="secondary">
+                  Corrigir
+                </LinkButton>
+              )}
+            </>
+          )
         }
       />
 
@@ -79,6 +81,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps<"/
         hasPdf={Boolean(current?.pdf_path)}
         fileName={current?.file_name ?? null}
         highlightShare={isNew || isCorrected}
+        readOnly={Boolean(support)}
       />
 
       {versions.length > 1 && (

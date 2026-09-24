@@ -67,7 +67,9 @@ const alignOptions: Record<BlockAlign, string> = { left: "Esquerda", center: "Ce
 
 // ---------------------------------------------------------------------------
 
-function HeaderView({ node, selected, updateAttributes, deleteNode }: ReactNodeViewProps) {
+function HeaderView({ node, selected: isSelected, editor, updateAttributes, deleteNode }: ReactNodeViewProps) {
+  // Somente leitura (modo suporte): sem destaque nem controles de edição.
+  const selected = isSelected && editor.isEditable;
   const { profile, assets } = useEditorData();
   const layout = node.attrs.layout as HeaderLayout;
   return (
@@ -86,7 +88,9 @@ function HeaderView({ node, selected, updateAttributes, deleteNode }: ReactNodeV
   );
 }
 
-function LogoView({ node, selected, updateAttributes, deleteNode }: ReactNodeViewProps) {
+function LogoView({ node, selected: isSelected, editor, updateAttributes, deleteNode }: ReactNodeViewProps) {
+  // Somente leitura (modo suporte): sem destaque nem controles de edição.
+  const selected = isSelected && editor.isEditable;
   const { assets } = useEditorData();
   const size = node.attrs.size as ImageSize;
   const align = node.attrs.align as BlockAlign;
@@ -105,7 +109,9 @@ function LogoView({ node, selected, updateAttributes, deleteNode }: ReactNodeVie
   );
 }
 
-function SignatureView({ node, selected, updateAttributes, deleteNode }: ReactNodeViewProps) {
+function SignatureView({ node, selected: isSelected, editor, updateAttributes, deleteNode }: ReactNodeViewProps) {
+  // Somente leitura (modo suporte): sem destaque nem controles de edição.
+  const selected = isSelected && editor.isEditable;
   const { assets, profile } = useEditorData();
   const size = node.attrs.size as ImageSize;
   const align = node.attrs.align as BlockAlign;

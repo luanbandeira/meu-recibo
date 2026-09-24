@@ -15,16 +15,18 @@ const items: { href: string; label: string; icon: ReactNode; primary?: boolean }
 ];
 
 /** Navegação inferior no celular, com "Emitir" em destaque ao alcance do polegar. */
-export function MobileNav() {
+export function MobileNav({ readOnly = false }: { readOnly?: boolean }) {
   const pathname = usePathname();
+  // Modo suporte (somente leitura): sem "Emitir".
+  const visible = readOnly ? items.filter((item) => !item.primary) : items;
   return (
     <nav
       aria-label="Principal"
       className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur sm:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <ul className="mx-auto grid max-w-md grid-cols-5">
-        {items.map((item) => {
+      <ul className={`mx-auto grid max-w-md ${readOnly ? "grid-cols-4" : "grid-cols-5"}`}>
+        {visible.map((item) => {
           const active = pathname.startsWith(item.href);
           return (
             <li key={item.href}>

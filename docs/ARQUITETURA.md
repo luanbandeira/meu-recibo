@@ -445,6 +445,13 @@ A sessão aberta no banco **é** o estado do modo suporte — não há cookie a 
 
 **[CONFIRMADO]** Suporte somente leitura. Permitir edição em nome do usuário é possível depois, mas aumenta muito o risco; recomendo não fazer na v1.
 
+**Implementação (Fase 9) [CONFIRMADO]:**
+- Motivo **obrigatório** (5–300 caracteres) e só para usuários com a configuração inicial concluída.
+- `requireOnboardedUser()` recusa o modo suporte por padrão (redireciona para `/dashboard?suporte=somente-leitura`); só as telas de consulta passam `{ allowSupport: true }`: início, recibos (lista e detalhe), modelos (lista e editor em modo leitura), campos e perfil (visão sem formulários). Emitir, corrigir, duplicar, criar modelo e **todas** as Server Actions ficam bloqueadas — e a RLS bloqueia qualquer escrita de qualquer forma.
+- Sem "Compartilhar" e sem "Gerar PDF" no suporte; "Baixar/Abrir" sim, e cada entrega do PDF grava `admin.support.view_pdf` com número e versão do recibo (sem dados pessoais).
+- A faixa aparece também na área admin enquanto houver sessão aberta; sair da conta encerra a sessão de suporte.
+- `/admin/auditoria`: RPC `admin_list_audit` (só super admin) com filtros por tipo de ação, período e usuário, paginação e o motivo de cada sessão de suporte. Todos os super admins leem todas as sessões de suporte.
+
 ---
 
 ## 15. Segurança (resumo)
