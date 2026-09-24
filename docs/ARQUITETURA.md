@@ -52,7 +52,7 @@ Princípios:
 | Editor | TipTap v3 (ProseMirror) — **apenas extensões MIT** | Maduro, headless, nós customizados (variáveis, cabeçalho, assinatura) |
 | PDF | `@react-pdf/renderer` | PDF vetorial (texto nítido e selecionável), roda em Node na Vercel sem Chromium |
 | Exibir PDF (preview) | `pdfjs-dist` | iOS Safari não exibe PDF multipágina em `<iframe>`; pdf.js renderiza em canvas em qualquer lugar |
-| Recorte de imagem | `react-easy-crop` | Pequeno, touch-friendly, MIT |
+| Recorte de imagem | `react-image-crop` | Recorte livre (assinatura + carimbo não têm proporção fixa), touch, MIT |
 | Remoção de fundo | **Algoritmo próprio em canvas** (sem dependência) | Ver §11 |
 | Máscaras (CPF/CNPJ/tel/moeda) | Utilitários próprios | ~100 linhas; evita dependência |
 | Testes | Vitest (unidade + integração RLS contra projeto de dev) ; Playwright (E2E, fase 10) | |
@@ -325,7 +325,8 @@ Suporte admin é **somente leitura** por construção: as policies de escrita ex
 
 - Nenhum bucket público, nenhuma URL permanente.
 - O PDF é entregue por `GET /api/recibos/[id]/pdf`: o servidor baixa com a sessão do usuário (RLS decide), responde com `Content-Disposition` e nome amigável. Mesma origem → o `fetch` para compartilhar funciona sem CORS; e é o ponto único para auditar visualização em modo suporte.
-- Upload de imagem: o cliente valida e normaliza (redimensiona para no máx. 1600px, exporta PNG); o servidor revalida tipo pelos **bytes mágicos** (não pela extensão), tamanho e dimensões lendo o cabeçalho. PNG como formato de renderização porque o react-pdf não aceita WEBP e a assinatura precisa de transparência.
+- Upload de imagem (implementado na Fase 3): o navegador envia **direto ao Storage** (evita o limite de 4,5 MB das funções da Vercel; RLS + limites do bucket valem), depois a Server Action `registerAsset` baixa os arquivos, confere bytes mágicos, dimensões, tamanho e dono, e só então registra — arquivos inválidos são apagados.
+- Normalização: o cliente valida e normaliza (redimensiona para no máx. 1600px, exporta PNG); o servidor revalida tipo pelos **bytes mágicos** (não pela extensão), tamanho e dimensões lendo o cabeçalho. PNG como formato de renderização porque o react-pdf não aceita WEBP e a assinatura precisa de transparência.
 
 ---
 
@@ -375,7 +376,7 @@ Assinatura + carimbo são **tinta sobre papel** — um problema de limiarizaçã
 4. **Preserva a cor da tinta** (azul da caneta, cor do carimbo); opção "escurecer tinta".
 5. Controle deslizante "Intensidade" para ajuste fino, com preview instantâneo.
 
-Fluxo: upload → recorte/rotação (`react-easy-crop`) → "Remover fundo" (opcional) → salvar. Guardamos o **original** e o **processado** (com os parâmetros usados). "Usar original" volta a qualquer momento. Tudo roda no aparelho: nenhuma imagem vai para serviço externo, zero custo.
+Fluxo: upload → recorte livre/rotação (`react-image-crop`) → "Remover fundo" (opcional) → salvar. Guardamos o **original** e o **processado** (com os parâmetros usados). "Usar original" volta a qualquer momento. Tudo roda no aparelho: nenhuma imagem vai para serviço externo, zero custo.
 
 ---
 

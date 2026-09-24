@@ -184,6 +184,36 @@ describe.skipIf(!hasSupabaseEnv)("Isolamento entre usuários (RLS)", () => {
     });
   });
 
+  describe("Storage: limites dos buckets e imutabilidade", () => {
+    it("recusa tipo de arquivo não permitido no bucket de assinaturas", async () => {
+      const html = new Blob(["<script>alert(1)</script>"], { type: "text/html" });
+      const { error } = await userA.client.storage
+        .from("signatures")
+        .upload(`${userA.id}/${randomUUID()}.png`, html, { contentType: "text/html" });
+      expect(error).not.toBeNull();
+    });
+
+    it("recusa arquivo acima do limite do bucket de logos (2 MB)", async () => {
+      const big = new Blob([new Uint8Array(2 * 1024 * 1024 + 1)], { type: "image/png" });
+      const { error } = await userA.client.storage
+        .from("logos")
+        .upload(`${userA.id}/${randomUUID()}.png`, big, { contentType: "image/png" });
+      expect(error).not.toBeNull();
+    });
+
+    it("não sobrescreve nem apaga arquivo já enviado", async () => {
+      const path = `${userB.id}/teste/v1.pdf`;
+      const overwrite = await userB.client.storage
+        .from("receipts")
+        .upload(path, TINY_PDF, { contentType: "application/pdf", upsert: true });
+      expect(overwrite.error).not.toBeNull();
+      const remove = await userB.client.storage.from("receipts").remove([path]);
+      expect(remove.data ?? []).toEqual([]);
+      const still = await userB.client.storage.from("receipts").download(path);
+      expect(still.error).toBeNull();
+    });
+  });
+
   describe("Privilégios do próprio usuário", () => {
     it("NÃO altera o próprio papel nem status", async () => {
       const { error } = await userA.client.from("profiles").update({ role: "super_admin" }).eq("id", userA.id);
