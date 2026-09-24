@@ -1,23 +1,29 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { LinkButton } from "@/components/ui/link-button";
 import { PdfViewer } from "@/features/pdf/pdf-viewer";
 import type { FieldDefinition } from "@/features/templates/document/variables";
-import { issueReceipt } from "../actions";
+import { correctReceipt, issueReceipt, type IssueResult } from "../actions";
 import { clearDraft, idempotencyKeyFor, parseDraft, readDraftRaw, resetIdempotencyKey } from "../draft";
+import { flowPaths, MAX_CORRECTION_NOTE, type ReceiptFlow } from "../flow";
 import { validateValues } from "../values";
 
 const noopSubscribe = () => () => {};
 
-export function ReceiptPreview({ templateId, fields }: { templateId: string; fields: FieldDefinition[] }) {
+export function ReceiptPreview({ flow, fields }: { flow: ReceiptFlow; fields: FieldDefinition[] }) {
   const router = useRouter();
+  const { draftId, form: formHref } = flowPaths(flow);
   // undefined = ainda no servidor; null = sem rascunho nesta aba.
-  const draftRaw = useSyncExternalStore(noopSubscribe, () => readDraftRaw(templateId), () => undefined);
-  const formHref = `/emitir/${templateId}`;
+  const draftRaw = useSyncExternalStore(noopSubscribe, () => readDraftRaw(draftId), () => undefined);
+  // O que a prévia precisa saber do fluxo: de onde vem o layout.
+  const targetKey = flow.kind === "issue" ? "templateId" : "receiptId";
+  const targetId = flow.kind === "issue" ? flow.templateId : flow.receiptId;
+  const noteId = useId();
+  const [note, setNote] = useState("");
 
   const draft = useMemo(() => {
     if (draftRaw === undefined) return { kind: "loading" as const };
@@ -41,7 +47,7 @@ export function ReceiptPreview({ templateId, fields }: { templateId: string; fie
     fetch("/api/recibos/previa", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ templateId, values: draft.values }),
+      body: JSON.stringify({ [targetKey]: targetId, values: draft.values }),
       signal: controller.signal,
     })
       .then(async (response) => {
@@ -57,22 +63,24 @@ export function ReceiptPreview({ templateId, fields }: { templateId: string; fie
       controller.abort();
       if (url) URL.revokeObjectURL(url);
     };
-  }, [draft, templateId]);
+  }, [draft, targetKey, targetId]);
 
   async function issue() {
     if (draft.kind !== "ready") return;
     setIssuing(true);
     setIssueError(null);
-    const result = await issueReceipt({
-      templateId,
-      values: draft.values,
-      idempotencyKey: idempotencyKeyFor(templateId),
-    }).catch(() => ({ ok: false as const, error: "Sem conexão. Tente novamente — o recibo não será duplicado." }));
+    const idempotencyKey = idempotencyKeyFor(draftId);
+    const offline = { ok: false as const, error: "Sem conexão. Tente novamente — nada será duplicado." };
+    const result: IssueResult = await (
+      flow.kind === "issue"
+        ? issueReceipt({ templateId: flow.templateId, values: draft.values, idempotencyKey })
+        : correctReceipt({ receiptId: flow.receiptId, values: draft.values, note, idempotencyKey })
+    ).catch(() => offline);
 
     if (result.ok) {
-      clearDraft(templateId);
-      resetIdempotencyKey(templateId);
-      router.push(`/recibos/${result.receiptId}?novo=1`);
+      clearDraft(draftId);
+      resetIdempotencyKey(draftId);
+      router.push(`/recibos/${result.receiptId}?${flow.kind === "issue" ? "novo" : "corrigido"}=1`);
       return;
     }
     setIssuing(false);
@@ -111,16 +119,38 @@ export function ReceiptPreview({ templateId, fields }: { templateId: string; fie
         </a>
       )}
 
+      {flow.kind === "correct" && (
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={noteId} className="text-sm font-medium text-slate-800">
+            O que foi corrigido? <span className="font-normal text-slate-500">(opcional)</span>
+          </label>
+          <textarea
+            id={noteId}
+            rows={2}
+            maxLength={MAX_CORRECTION_NOTE}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Ex.: valor ajustado"
+            className="block w-full rounded-lg bg-white px-3.5 py-3 text-base shadow-xs ring-1 ring-inset ring-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-600"
+          />
+          <p className="text-xs text-slate-500">Fica registrado no histórico de versões deste recibo.</p>
+        </div>
+      )}
+
       {issueError && <Alert tone="error">{issueError}</Alert>}
       <div className="sticky bottom-20 z-10 flex flex-col gap-2 rounded-2xl bg-slate-50/95 py-2 backdrop-blur sm:static sm:flex-row sm:bg-transparent sm:py-0">
         <LinkButton href={formHref} variant="secondary" className="min-h-12 sm:flex-1">
           ← Voltar e corrigir
         </LinkButton>
         <Button size="lg" className="sm:flex-1" pending={issuing} disabled={!pdf} onClick={issue}>
-          {issuing ? "Emitindo…" : "Gerar PDF"}
+          {flow.kind === "issue" ? (issuing ? "Emitindo…" : "Gerar PDF") : issuing ? "Salvando…" : `Salvar versão ${flow.nextVersion}`}
         </Button>
       </div>
-      <p className="text-center text-xs text-slate-500">Ao gerar, o recibo recebe um número e fica salvo em Meus recibos.</p>
+      <p className="text-center text-xs text-slate-500">
+        {flow.kind === "issue"
+          ? "Ao gerar, o recibo recebe um número e fica salvo em Meus recibos."
+          : `O recibo continua com o número ${flow.number}. A versão anterior fica guardada.`}
+      </p>
     </div>
   );
 }

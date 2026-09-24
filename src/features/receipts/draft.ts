@@ -7,11 +7,12 @@ import type { RawValues } from "./values";
 // Contém dados pessoais (paciente, CPF): nunca vai para localStorage nem servidor.
 
 const PREFIX = "meurecibo:rascunho:";
-const key = (templateId: string) => `${PREFIX}${templateId}`;
+// draftId: id do modelo (emissão) ou "correcao-<id do recibo>" (correção).
+const key = (draftId: string) => `${PREFIX}${draftId}`;
 
-export function readDraftRaw(templateId: string): string | null {
+export function readDraftRaw(draftId: string): string | null {
   try {
-    return sessionStorage.getItem(key(templateId));
+    return sessionStorage.getItem(key(draftId));
   } catch {
     return null;
   }
@@ -27,19 +28,19 @@ export function parseDraft(raw: string | null): RawValues | null {
   }
 }
 
-export function writeDraft(templateId: string, values: RawValues) {
+export function writeDraft(draftId: string, values: RawValues) {
   try {
-    sessionStorage.setItem(key(templateId), JSON.stringify({ values, at: Date.now() }));
+    sessionStorage.setItem(key(draftId), JSON.stringify({ values, at: Date.now() }));
     // Dados mudaram: a próxima emissão é outro recibo (nova chave de idempotência).
-    sessionStorage.removeItem(`meurecibo:emissao:${templateId}`);
+    sessionStorage.removeItem(`meurecibo:emissao:${draftId}`);
   } catch {
     // Sem armazenamento: o formulário continua funcionando, só não sobrevive à navegação.
   }
 }
 
-export function clearDraft(templateId: string) {
+export function clearDraft(draftId: string) {
   try {
-    sessionStorage.removeItem(key(templateId));
+    sessionStorage.removeItem(key(draftId));
   } catch {}
 }
 
@@ -55,22 +56,22 @@ export function clearAllDrafts() {
 // Chave de idempotência da emissão: a MESMA enquanto o rascunho existir, então
 // um duplo toque ou uma nova tentativa após queda de conexão nunca gera dois
 // recibos. Renovada após emitir com sucesso.
-const idemKey = (templateId: string) => `meurecibo:emissao:${templateId}`;
+const idemKey = (draftId: string) => `meurecibo:emissao:${draftId}`;
 
-export function idempotencyKeyFor(templateId: string): string {
+export function idempotencyKeyFor(draftId: string): string {
   try {
-    const existing = sessionStorage.getItem(idemKey(templateId));
+    const existing = sessionStorage.getItem(idemKey(draftId));
     if (existing) return existing;
     const created = crypto.randomUUID();
-    sessionStorage.setItem(idemKey(templateId), created);
+    sessionStorage.setItem(idemKey(draftId), created);
     return created;
   } catch {
     return crypto.randomUUID();
   }
 }
 
-export function resetIdempotencyKey(templateId: string) {
+export function resetIdempotencyKey(draftId: string) {
   try {
-    sessionStorage.removeItem(idemKey(templateId));
+    sessionStorage.removeItem(idemKey(draftId));
   } catch {}
 }

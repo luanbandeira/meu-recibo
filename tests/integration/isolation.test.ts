@@ -172,6 +172,14 @@ describe.skipIf(!hasSupabaseEnv)("Isolamento entre usuários (RLS)", () => {
       expect(error).not.toBeNull();
     });
 
+    it("NÃO lista nem busca o histórico de B (nem pedindo pelo id dele)", async () => {
+      const { data, error } = await userA.client.rpc("list_receipts", { p_user_id: userB.id, p_terms: ["pagador"] });
+      expect(error).toBeNull();
+      expect(data).toMatchObject({ total: 0, total_amount_cents: 0, items: [] });
+      const own = await userB.client.rpc("list_receipts", { p_user_id: userB.id, p_terms: ["pagador"] });
+      expect(own.data.total).toBe(1);
+    });
+
     it("NÃO anexa PDF à versão de B", async () => {
       const { error } = await userA.client.rpc("attach_receipt_pdf", {
         p_version_id: receiptB.version_id,
@@ -245,6 +253,11 @@ describe.skipIf(!hasSupabaseEnv)("Isolamento entre usuários (RLS)", () => {
   });
 
   describe("Visitante sem login", () => {
+    it("NÃO consulta o histórico", async () => {
+      const { error } = await anonClient().rpc("list_receipts", { p_user_id: userB.id });
+      expect(error).not.toBeNull();
+    });
+
     it("NÃO lê nenhuma tabela", async () => {
       const anon = anonClient();
       for (const table of ["profiles", "receipts", "receipt_templates", "professional_profiles"]) {

@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useId, useState, useSyncExternalStore, type FormEvent } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import type { FieldDefinition } from "@/features/templates/document/variables";
 import { clearDraft, parseDraft, readDraftRaw, writeDraft } from "../draft";
+import { flowPaths, type ReceiptFlow } from "../flow";
 import { maskInput, validateValues, type RawValues } from "../values";
 
 const noopSubscribe = () => () => {};
@@ -80,19 +81,34 @@ function RequiredMark() {
 }
 
 export function EmissionForm({
-  templateId,
+  flow,
   fields,
   defaults,
+  seed,
 }: {
-  templateId: string;
+  flow: ReceiptFlow;
   fields: FieldDefinition[];
+  /** Valores ao abrir sem rascunho (emissão: padrões; correção: a versão atual). */
   defaults: RawValues;
+  /** Duplicar: substitui o rascunho desta aba pelos dados copiados. */
+  seed?: { values: RawValues; notice: string };
 }) {
   const router = useRouter();
+  const paths = flowPaths(flow);
+  const { draftId } = paths;
   // Rascunho salvo nesta aba (volta da prévia). No servidor: null.
-  const draftRaw = useSyncExternalStore(noopSubscribe, () => readDraftRaw(templateId), () => null);
-  const [edited, setEdited] = useState<RawValues | null>(null);
+  const draftRaw = useSyncExternalStore(noopSubscribe, () => readDraftRaw(draftId), () => null);
+  const [edited, setEdited] = useState<RawValues | null>(seed?.values ?? null);
+  const [seedNotice] = useState(seed?.notice ?? null);
   const values: RawValues = edited ?? { ...defaults, ...(parseDraft(draftRaw) ?? {}) };
+
+  // Os dados copiados viram o rascunho, e a URL perde o ?duplicar= para que
+  // recarregar a página não apague o que for digitado depois.
+  useEffect(() => {
+    if (!seed) return;
+    writeDraft(draftId, seed.values);
+    router.replace(paths.form, { scroll: false });
+  }, [seed, draftId, paths.form, router]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmClear, setConfirmClear] = useState(false);
@@ -101,7 +117,7 @@ export function EmissionForm({
   function update(key: string, raw: string, type: FieldDefinition["type"]) {
     const next = { ...values, [key]: maskInput(type, raw) };
     setEdited(next);
-    writeDraft(templateId, next);
+    writeDraft(draftId, next);
     if (errors[key]) {
       setErrors((current) => {
         const next = { ...current };
@@ -120,25 +136,26 @@ export function EmissionForm({
       if (first) document.querySelector<HTMLElement>(`[name="${first.key}"]`)?.focus();
       return;
     }
-    writeDraft(templateId, values);
+    writeDraft(draftId, values);
     setNavigating(true);
-    router.push(`/emitir/${templateId}/previa`);
+    router.push(paths.preview);
   }
 
   function clearForm() {
-    clearDraft(templateId);
+    clearDraft(draftId);
     setEdited({ ...defaults });
     setErrors({});
     setConfirmClear(false);
   }
 
   const errorCount = Object.keys(errors).length;
+  const isCorrection = flow.kind === "correct";
 
   if (fields.length === 0) {
     return (
       <div className="flex flex-col gap-4">
         <Alert tone="info">Este modelo não tem campos a preencher. Todos os dados vêm do seu perfil.</Alert>
-        <Button size="lg" onClick={() => router.push(`/emitir/${templateId}/previa`)}>
+        <Button size="lg" onClick={() => router.push(paths.preview)}>
           Visualizar recibo
         </Button>
       </div>
@@ -147,6 +164,7 @@ export function EmissionForm({
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
+      {seedNotice && <Alert tone="info">{seedNotice}</Alert>}
       {errorCount > 0 && (
         <Alert tone="error">
           {errorCount === 1 ? "Confira o campo destacado." : `Confira os ${errorCount} campos destacados.`}
@@ -188,9 +206,9 @@ export function EmissionForm({
         </Button>
         {confirmClear ? (
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-slate-700">Apagar o que foi digitado?</span>
+            <span className="text-slate-700">{isCorrection ? "Voltar aos dados salvos?" : "Apagar o que foi digitado?"}</span>
             <Button type="button" variant="danger" onClick={clearForm}>
-              Limpar
+              {isCorrection ? "Desfazer" : "Limpar"}
             </Button>
             <Button type="button" variant="ghost" onClick={() => setConfirmClear(false)}>
               Cancelar
@@ -198,7 +216,7 @@ export function EmissionForm({
           </div>
         ) : (
           <Button type="button" variant="ghost" onClick={() => setConfirmClear(true)}>
-            Limpar formulário
+            {isCorrection ? "Desfazer alterações" : "Limpar formulário"}
           </Button>
         )}
       </div>

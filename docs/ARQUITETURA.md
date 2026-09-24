@@ -393,10 +393,19 @@ Fluxo: upload → recorte livre/rotação (`react-image-crop`) → "Remover fund
   4. RPC `attach_receipt_pdf` grava caminho + SHA-256.
   Se 3–4 falharem, o recibo existe e o PDF é regenerável a partir do snapshot (botão "Tentar novamente").
 - Detalhes de fidelidade: fontes embutidas; `wrap={false}` no bloco de assinatura (nunca fica sozinha no topo da página); **hifenização desativada** (o padrão do react-pdf é inglês); formatação pt-BR via `Intl`.
-- Nome do arquivo: `recibo-{pagador}-{dd-mm-aaaa}.pdf`, sem acentos, só `[a-z0-9-]`, até 80 caracteres.
+- Nome do arquivo: `recibo-{pagador}-{dd-mm-aaaa}.pdf`, sem acentos, só `[a-z0-9-]`, até 80 caracteres. Versões corrigidas ganham sufixo `-v2`, `-v3`… [CONFIRMADO]
 
 ### Correção / versionamento
-"Corrigir recibo" abre o formulário preenchido com a versão atual → nova emissão pela RPC `correct_receipt`: mesma numeração, `version_no + 1`, PDF novo em `v2.pdf`, `current_version_id` atualizado. A v1 continua intacta e acessível ("Versões anteriores"). **Duplicar** = novo recibo, novo número, formulário pré-preenchido.
+"Corrigir recibo" abre o formulário preenchido com a versão atual → nova emissão pela RPC `correct_receipt`: mesma numeração, `version_no + 1`, PDF novo em `v2.pdf`, `current_version_id` atualizado. A v1 continua intacta e acessível ("Versões anteriores"). **Duplicar** = novo recibo, novo número, formulário pré-preenchido. [CONFIRMADO — Fase 8]
+- Correção usa os campos e o layout do `template_snapshot` da versão atual (o mesmo que a RPC grava) e o perfil profissional atual; a prévia (`/api/recibos/previa` com `receiptId`) renderiza exatamente isso, já com o número verdadeiro. Motivo opcional (≤ 500) vai para `correction_note`.
+- Formulário e prévia são os mesmos da emissão, parametrizados por um "fluxo" (`features/receipts/flow.ts`); o rascunho da correção fica em `sessionStorage` sob `correcao-<id>`, separado do rascunho de emissão.
+- Duplicar copia os valores da versão atual, exceto `data_emissao` (hoje). Se o modelo original foi arquivado, a pessoa escolhe outro modelo (os campos são do usuário, não do modelo).
+
+### Histórico (busca, filtros, ordenação) [CONFIRMADO — Fase 8]
+- RPC `list_receipts` (SECURITY INVOKER — a RLS vale; `p_user_id` só filtra) devolve página + total + soma dos valores numa consulta.
+- Busca: cada palavra (normalizada no app: minúsculas, sem acento) precisa aparecer em `search_text` ou no número; palavras só com dígitos/pontuação casam também sem pontuação (CPF/CNPJ digitado com ou sem máscara). Curingas são literais.
+- Período filtra `receipts.receipt_date` (coluna gerada: data do atendimento, senão dia da emissão em Brasília) — a mesma data exibida no cartão.
+- Filtros vivem na URL (`q`, `periodo`, `de`, `ate`, `modelo`, `ordem`, `pagina`): link compartilhável, recarregar mantém o estado.
 
 ---
 

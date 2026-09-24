@@ -51,9 +51,11 @@ function slug(text: string) {
  * Nome amigável e seguro: recibo-maria-silva-23-09-2026.pdf
  * Só [a-z0-9-], até 80 caracteres (validado também no banco).
  */
-export function receiptFileName(params: { payer: string | null; date: string | null; number: string }) {
+export function receiptFileName(params: { payer: string | null; date: string | null; number: string; version?: number }) {
   const date = params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date.split("-").reverse().join("-") : null;
   const payer = params.payer ? slug(params.payer).slice(0, 40).replace(/-+$/, "") : "";
   const base = ["recibo", payer || slug(params.number), date].filter(Boolean).join("-");
-  return `${base.slice(0, 76).replace(/-+$/, "")}.pdf`;
+  // Versão corrigida ganha sufixo: quem recebe as duas sabe qual é a nova.
+  const suffix = params.version && params.version > 1 ? `-v${params.version}` : "";
+  return `${base.slice(0, 76 - suffix.length).replace(/-+$/, "")}${suffix}.pdf`;
 }

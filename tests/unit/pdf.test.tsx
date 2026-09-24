@@ -137,15 +137,20 @@ describe("nome do arquivo", () => {
     [{ payer: "José Ção & Cia. / Ltda", date: "2026-01-05", number: "REC-2026-000002" }, "recibo-jose-cao-cia-ltda-05-01-2026.pdf"],
     [{ payer: null, date: null, number: "REC-2026-000003" }, "recibo-rec-2026-000003.pdf"],
     [{ payer: "../../etc/passwd", date: "2026-01-05", number: "x" }, "recibo-etc-passwd-05-01-2026.pdf"],
+    [{ payer: "Maria da Silva", date: "2026-09-23", number: "x", version: 1 }, "recibo-maria-da-silva-23-09-2026.pdf"],
+    [{ payer: "Maria da Silva", date: "2026-09-23", number: "x", version: 2 }, "recibo-maria-da-silva-23-09-2026-v2.pdf"],
   ])("%j → %s", (input, expected) => {
     const name = receiptFileName(input);
     expect(name).toBe(expected);
     expect(name).toMatch(/^[a-z0-9-]{1,80}\.pdf$/);
   });
 
-  it("limita o tamanho", () => {
+  it("limita o tamanho, mantendo o sufixo de versão", () => {
     const name = receiptFileName({ payer: "Nome ".repeat(50), date: "2026-01-01", number: "x" });
     expect(name.length).toBeLessThanOrEqual(84);
     expect(name).toMatch(/^[a-z0-9-]+\.pdf$/);
+    const long = "Nome Muito Comprido ".repeat(10);
+    const v12 = receiptFileName({ payer: long, date: "2026-01-01", number: "x", version: 12 });
+    expect(v12).toMatch(/^[a-z0-9-]{1,80}-v12\.pdf$/);
   });
 });

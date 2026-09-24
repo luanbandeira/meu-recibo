@@ -9,7 +9,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { citext } from "@electric-sql/pglite/contrib/citext";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { unaccent } from "@electric-sql/pglite/contrib/unaccent";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const A = "00000000-0000-0000-0000-00000000000a";
 const B = "00000000-0000-0000-0000-00000000000b";
@@ -198,6 +198,96 @@ describe("numeração, idempotência e correção", () => {
       { version_no: 1, values: { valor: 100 } },
       { version_no: 2, values: { valor: 200 } },
     ]);
+  });
+});
+
+describe("histórico: busca, filtros, ordenação e totais (Fase 8)", () => {
+  const C = "00000000-0000-0000-0000-00000000000c";
+  type Listed = { total: number; total_amount_cents: number; items: { number: string; payer_name: string; receipt_date: string }[] };
+  const list = (uid: string, owner: string, opts: { terms?: string[]; from?: string; to?: string; template?: string; sort?: string; limit?: number; offset?: number } = {}) =>
+    as<{ r: Listed }>(uid, "select public.list_receipts($1, $2, $3, $4, $5, $6, $7, $8) as r", [
+      owner, opts.terms ?? [], opts.from ?? null, opts.to ?? null, opts.template ?? null, opts.sort ?? "recentes", opts.limit ?? 20, opts.offset ?? 0,
+    ]).then((rows) => rows[0].r);
+  const payers = (result: Listed) => result.items.map((i) => i.payer_name);
+
+  let otherTemplate: string;
+
+  beforeAll(async () => {
+    await db.query(`insert into auth.users (id, raw_app_meta_data) values ($1, '{"username":"usuario-c","display_name":"C"}')`, [C]);
+    await as(C, `insert into public.professional_profiles (user_id, full_name) values ($1, 'Profissional C')`, [C]);
+    const insertTemplate = `insert into public.receipt_templates (user_id, name, content) values ($1, $2, '{"type":"doc"}') returning id`;
+    const [{ id: main }] = await as<{ id: string }>(C, insertTemplate, [C, "Principal"]);
+    [{ id: otherTemplate }] = await as<{ id: string }>(C, insertTemplate, [C, "Outro"]);
+
+    const receipts = [
+      { template: main, payer: "José da Silva", search: "jose da silva 52998224725 hospital central", amount: 15000, date: "2026-01-10" },
+      { template: main, payer: "Ana Souza", search: "ana souza 11222333000181", amount: 50000, date: "2026-02-20" },
+      { template: otherTemplate, payer: "Bruno 50% Lima", search: "bruno 50% lima", amount: 8000, date: "2026-02-25" },
+    ];
+    for (const r of receipts) {
+      await as(C, "select public.issue_receipt($1, '{}', $2, gen_random_uuid())", [
+        r.template, { payer_name: r.payer, amount_cents: r.amount, service_date: r.date, search_text: r.search },
+      ]);
+    }
+  });
+
+  it("lista tudo com total e soma dos valores", async () => {
+    const all = await list(C, C);
+    expect(all.total).toBe(3);
+    expect(Number(all.total_amount_cents)).toBe(73000);
+    expect(payers(all)).toEqual(["Bruno 50% Lima", "Ana Souza", "José da Silva"]); // mais recentes primeiro
+  });
+
+  it("busca: todas as palavras, número do recibo e CPF/CNPJ com ou sem pontuação", async () => {
+    expect(payers(await list(C, C, { terms: ["silva", "central"] }))).toEqual(["José da Silva"]);
+    expect(payers(await list(C, C, { terms: ["silva", "ana"] }))).toEqual([]);
+    expect(payers(await list(C, C, { terms: ["529.982.247-25"] }))).toEqual(["José da Silva"]);
+    expect(payers(await list(C, C, { terms: ["11.222.333/0001-81"] }))).toEqual(["Ana Souza"]);
+    const { items } = await list(C, C, { terms: ["ana"] });
+    expect(payers(await list(C, C, { terms: [items[0].number.toLowerCase()] }))).toEqual(["Ana Souza"]);
+    expect(payers(await list(C, C, { terms: [items[0].number.slice(4)] }))).toEqual(["Ana Souza"]); // "2026-000002"
+  });
+
+  it("curingas digitados são literais", async () => {
+    expect(payers(await list(C, C, { terms: ["%"] }))).toEqual(["Bruno 50% Lima"]);
+    expect(payers(await list(C, C, { terms: ["_"] }))).toEqual([]);
+  });
+
+  it("filtra por período (data do recibo) e por modelo", async () => {
+    expect(payers(await list(C, C, { from: "2026-02-01", to: "2026-02-28" })).sort()).toEqual(["Ana Souza", "Bruno 50% Lima"]);
+    expect(payers(await list(C, C, { to: "2026-01-31" }))).toEqual(["José da Silva"]);
+    const byTemplate = await list(C, C, { template: otherTemplate });
+    expect(payers(byTemplate)).toEqual(["Bruno 50% Lima"]);
+    expect(Number(byTemplate.total_amount_cents)).toBe(8000);
+  });
+
+  it("ordena por valor, pagador, data do atendimento e mais antigos", async () => {
+    expect(payers(await list(C, C, { sort: "valor" }))).toEqual(["Ana Souza", "José da Silva", "Bruno 50% Lima"]);
+    expect(payers(await list(C, C, { sort: "pagador" }))).toEqual(["Ana Souza", "Bruno 50% Lima", "José da Silva"]);
+    expect(payers(await list(C, C, { sort: "data" }))).toEqual(["Bruno 50% Lima", "Ana Souza", "José da Silva"]);
+    expect(payers(await list(C, C, { sort: "antigos" }))).toEqual(["José da Silva", "Ana Souza", "Bruno 50% Lima"]);
+    expect(payers(await list(C, C, { sort: "'; drop table x; --" }))).toHaveLength(3); // desconhecido = padrão
+  });
+
+  it("pagina sem perder o total", async () => {
+    const page2 = await list(C, C, { sort: "pagador", limit: 2, offset: 2 });
+    expect(page2.total).toBe(3);
+    expect(payers(page2)).toEqual(["José da Silva"]);
+  });
+
+  // C só existe neste bloco: os testes de administração contam usuários.
+  afterAll(async () => {
+    await db.query("delete from auth.users where id = $1", [C]);
+  });
+
+  it("não lista recibos de outro usuário, nem pedindo pelo id dele", async () => {
+    const stolen = await list(A, C);
+    expect(stolen.total).toBe(0);
+    expect(stolen.items).toEqual([]);
+    await expect(as(A, "select public.list_receipts($1)", [C])).resolves.toBeDefined();
+    const anon = db.exec("set role anon; select public.list_receipts('00000000-0000-0000-0000-00000000000c')");
+    await expect(anon).rejects.toThrow(/permission denied/);
+    await db.exec("reset role;");
   });
 });
 

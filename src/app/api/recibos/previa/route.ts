@@ -5,16 +5,20 @@ import { listFields } from "@/features/fields/queries";
 import { renderReceiptPdf } from "@/features/pdf/render";
 import { getProfessionalProfile } from "@/features/profile/queries";
 import { loadPdfImage, parseSettings } from "@/features/receipts/pdf-service";
+import { getReceiptSource } from "@/features/receipts/queries";
 import { emissionFields, validateValues } from "@/features/receipts/values";
 import { getTemplate } from "@/features/templates/queries";
 
 // Prévia = o PDF real, gerado em memória com os dados do formulário.
 // Não salva nada e não consome número de recibo.
+// Emissão: layout do modelo atual. Correção: layout salvo na versão atual do
+// recibo (o mesmo que a RPC correct_receipt usa) e o número verdadeiro.
 
-const bodySchema = z.object({
-  templateId: z.uuid(),
-  values: z.record(z.string(), z.string().max(2000)),
-});
+const valuesSchema = z.record(z.string(), z.string().max(2000));
+const bodySchema = z.union([
+  z.object({ templateId: z.uuid(), values: valuesSchema }),
+  z.object({ receiptId: z.uuid(), values: valuesSchema }),
+]);
 
 const noStore = { "Cache-Control": "private, no-store" };
 
@@ -28,16 +32,16 @@ export async function POST(request: NextRequest) {
   if (!body.success) return NextResponse.json({ error: "Dados inválidos." }, { status: 400, headers: noStore });
 
   const userId = session.userId;
-  const [template, fields, professional] = await Promise.all([
-    getTemplate(userId, body.data.templateId),
+  const [layout, fields, professional] = await Promise.all([
+    "templateId" in body.data ? templateLayout(userId, body.data.templateId) : receiptLayout(userId, body.data.receiptId),
     listFields(userId),
     getProfessionalProfile(userId),
   ]);
-  if (!template || template.status !== "active" || !professional) {
+  if (!layout || !professional) {
     return NextResponse.json({ error: "Modelo não encontrado." }, { status: 404, headers: noStore });
   }
 
-  const formFields = emissionFields(template.used_variables, fields);
+  const formFields = emissionFields(layout.usedVariables, fields);
   const validation = validateValues(formFields, body.data.values);
   if (!validation.ok) {
     return NextResponse.json({ error: "Dados incompletos.", errors: validation.errors }, { status: 422, headers: noStore });
@@ -49,17 +53,39 @@ export async function POST(request: NextRequest) {
   ]);
 
   const pdf = await renderReceiptPdf({
-    content: template.content,
-    settings: parseSettings(template.settings),
+    content: layout.content,
+    settings: parseSettings(layout.settings),
     profile: professional,
     images: { logo, signature },
     fields,
     values: validation.values,
-    receiptNumber: "REC-0000-000000",
+    receiptNumber: layout.receiptNumber,
     title: "Prévia do recibo",
   });
 
   return new NextResponse(new Uint8Array(pdf), {
     headers: { ...noStore, "Content-Type": "application/pdf", "Content-Disposition": 'inline; filename="previa.pdf"' },
   });
+}
+
+async function templateLayout(userId: string, templateId: string) {
+  const template = await getTemplate(userId, templateId);
+  if (!template || template.status !== "active") return null;
+  return {
+    content: template.content,
+    settings: template.settings,
+    usedVariables: template.used_variables,
+    receiptNumber: "REC-0000-000000",
+  };
+}
+
+async function receiptLayout(userId: string, receiptId: string) {
+  const source = await getReceiptSource(userId, receiptId);
+  if (!source || source.status !== "issued") return null;
+  return {
+    content: source.templateContent,
+    settings: source.templateSettings,
+    usedVariables: source.usedVariables,
+    receiptNumber: source.number,
+  };
 }

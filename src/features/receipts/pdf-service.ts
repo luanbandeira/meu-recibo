@@ -74,6 +74,7 @@ export async function generateAndAttachPdf(userId: string, versionId: string): P
     payer: version.receipt.payer_name,
     date: typeof values.data_emissao === "string" ? values.data_emissao : version.receipt.issued_at.slice(0, 10),
     number: version.receipt.number,
+    version: version.version_no,
   });
 
   const pdf = await renderReceiptPdf({

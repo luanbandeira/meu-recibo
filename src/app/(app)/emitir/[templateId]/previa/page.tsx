@@ -21,7 +21,7 @@ export default async function PreviewPage({ params }: PageProps<"/emitir/[templa
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       <PageHeader title="Confira o recibo" description={template.name} back={{ href: `/emitir/${template.id}`, label: "Formulário" }} />
-      <ReceiptPreview templateId={template.id} fields={emissionFields(template.used_variables, fields)} />
+      <ReceiptPreview flow={{ kind: "issue", templateId: template.id }} fields={emissionFields(template.used_variables, fields)} />
     </div>
   );
 }
