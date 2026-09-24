@@ -6,7 +6,7 @@ import { z } from "zod";
 import { writeAuditLog } from "@/features/audit/log";
 import { generateTemporaryPassword } from "@/features/auth/password";
 import { requireSuperAdmin } from "@/features/auth/session";
-import { normalizeUsername, usernameToAuthEmail } from "@/features/auth/username";
+import { normalizeUsername, suggestUsername, usernameAlternatives, usernameToAuthEmail } from "@/features/auth/username";
 import { publicEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createUserSchema, userIdSchema } from "./schemas";
@@ -29,9 +29,36 @@ export type IssuedCredentials = {
 
 export type CreateUserState = {
   fieldErrors?: { displayName?: string; username?: string };
+  /** Usuário livre sugerido quando o escolhido já existe. */
+  suggestedUsername?: string;
   formError?: string;
   created?: IssuedCredentials;
 };
+
+/** Primeiro usuário livre: o próprio ou maria.souza2, maria.souza3… */
+async function firstAvailableUsername(base: string): Promise<string> {
+  const candidates = [base, ...usernameAlternatives(base)];
+  const { data } = await createAdminClient().from("profiles").select("username").in("username", candidates);
+  const taken = new Set((data ?? []).map((row) => String(row.username).toLowerCase()));
+  return candidates.find((candidate) => !taken.has(candidate)) ?? "";
+}
+
+async function usernameTaken(username: string): Promise<CreateUserState> {
+  const suggestion = await firstAvailableUsername(username);
+  return {
+    fieldErrors: {
+      username: suggestion ? `Esse usuário já existe. Deixei preenchido um livre: ${suggestion}` : "Esse usuário já existe. Escolha outro.",
+    },
+    suggestedUsername: suggestion || undefined,
+  };
+}
+
+/** Sugestão de usuário (nome.sobrenome) já livre, enquanto o admin digita o nome. */
+export async function suggestAvailableUsername(fullName: string): Promise<string> {
+  await requireSuperAdmin();
+  const base = suggestUsername(String(fullName ?? "").slice(0, 120));
+  return base ? firstAvailableUsername(base) : "";
+}
 
 export async function createUser(_prev: CreateUserState, formData: FormData): Promise<CreateUserState> {
   const { userId: adminId } = await requireSuperAdmin();
@@ -49,9 +76,7 @@ export async function createUser(_prev: CreateUserState, formData: FormData): Pr
 
   const admin = createAdminClient();
   const { data: existing } = await admin.from("profiles").select("id").eq("username", username).maybeSingle();
-  if (existing) {
-    return { fieldErrors: { username: "Este usuário já existe. Escolha outro." } };
-  }
+  if (existing) return usernameTaken(username);
 
   const temporaryPassword = generateTemporaryPassword();
   const { data, error } = await admin.auth.admin.createUser({
@@ -62,9 +87,7 @@ export async function createUser(_prev: CreateUserState, formData: FormData): Pr
   });
 
   if (error || !data.user) {
-    if (error?.code === "email_exists" || error?.code === "user_already_exists") {
-      return { fieldErrors: { username: "Este usuário já existe. Escolha outro." } };
-    }
+    if (error?.code === "email_exists" || error?.code === "user_already_exists") return usernameTaken(username);
     return { formError: "Não foi possível criar o usuário. Tente novamente." };
   }
 

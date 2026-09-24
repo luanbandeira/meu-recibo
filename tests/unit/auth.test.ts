@@ -5,6 +5,7 @@ import {
   normalizeUsername,
   sanitizeUsernameInput,
   suggestUsername,
+  usernameAlternatives,
   usernameToAuthEmail,
 } from "@/features/auth/username";
 import { safeRedirectPath } from "@/lib/safe-redirect";
@@ -70,13 +71,31 @@ describe("safeRedirectPath", () => {
 
 describe("sugestão e digitação de usuário", () => {
   it.each([
-    ["Mariana Conceição", "mariana"],
-    ["  José da Silva", "jose"],
+    ["Mariana Conceição", "mariana.conceicao"],
+    ["Maria Souza", "maria.souza"],
+    ["  José da Silva", "jose.silva"],
+    ["Ana Maria dos Santos Oliveira", "ana.oliveira"],
     ["Ângela", "angela"],
+    ["Da Silva", "da.silva"],
     ["Al", ""],
     ["", ""],
   ])("%s → %s", (name, expected) => {
     expect(suggestUsername(name)).toBe(expected);
+  });
+
+  it("sugestão longa demais é cortada sem terminar em ponto", () => {
+    const username = suggestUsername(`Maria ${"Sobrenomecomprido".repeat(3)}`);
+    expect(username.length).toBeLessThanOrEqual(32);
+    expect(username).toMatch(/^maria\.[a-z]+$/);
+  });
+
+  it("alternativas numeradas quando o usuário já existe, sempre válidas", () => {
+    expect(usernameAlternatives("maria.souza", 3)).toEqual(["maria.souza2", "maria.souza3", "maria.souza4"]);
+    for (const alt of usernameAlternatives("a".repeat(32), 12)) {
+      expect(alt.length).toBeLessThanOrEqual(32);
+      expect(isValidUsername(alt)).toBe(true);
+    }
+    expect(usernameAlternatives("abc.", 1)).toEqual(["abc2"]);
   });
 
   it("remove acentos, espaços e caracteres inválidos enquanto digita", () => {

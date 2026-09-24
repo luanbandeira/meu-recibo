@@ -1,11 +1,11 @@
 "use client";
 
-import { startTransition, useActionState, useState, type FormEvent } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { LinkButton } from "@/components/ui/link-button";
 import { TextField } from "@/components/ui/text-field";
-import { createUser, type CreateUserState } from "@/features/admin/actions";
+import { createUser, suggestAvailableUsername, type CreateUserState } from "@/features/admin/actions";
 import { CredentialsCard } from "@/features/admin/components/credentials-card";
 import { sanitizeUsernameInput, suggestUsername } from "@/features/auth/username";
 
@@ -16,6 +16,26 @@ export function CreateUserForm() {
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [usernameEdited, setUsernameEdited] = useState(false);
+
+  // Enquanto digita o nome: sugestão local na hora (maria.souza) e, logo em
+  // seguida, a versão já livre conferida no servidor (maria.souza2).
+  const lookup = useRef(0);
+  useEffect(() => {
+    if (usernameEdited || !displayName.trim()) return;
+    const id = ++lookup.current;
+    const timer = setTimeout(async () => {
+      const available = await suggestAvailableUsername(displayName).catch(() => "");
+      if (available && id === lookup.current) setUsername(available);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [displayName, usernameEdited]);
+
+  // Usuário já existia ao criar: preenche a sugestão livre que o servidor achou.
+  const [appliedSuggestion, setAppliedSuggestion] = useState<string | undefined>(undefined);
+  if (state.suggestedUsername && state.suggestedUsername !== appliedSuggestion) {
+    setAppliedSuggestion(state.suggestedUsername);
+    setUsername(state.suggestedUsername);
+  }
 
   if (state.created) {
     return (

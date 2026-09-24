@@ -22,11 +22,30 @@ export function sanitizeUsernameInput(raw: string): string {
     .slice(0, 32);
 }
 
-/** Sugestão a partir do nome: primeiro nome, sem acentos ("Mariana Souza" → "mariana"). */
+const NAME_PARTICLES = new Set(["da", "de", "do", "das", "dos", "e"]);
+
+/**
+ * Sugestão a partir do nome: primeiro nome + último sobrenome, sem acentos
+ * ("Maria Souza" → "maria.souza"; "José da Silva" → "jose.silva").
+ */
 export function suggestUsername(fullName: string): string {
-  const firstName = fullName.trim().split(/\s+/)[0] ?? "";
-  const candidate = sanitizeUsernameInput(firstName).replace(/^[._-]+/, "");
+  const words = fullName
+    .trim()
+    .split(/\s+/)
+    .map((word) => sanitizeUsernameInput(word).replace(/[._-]/g, ""))
+    .filter(Boolean);
+  const parts = words.filter((word, index) => index === 0 || !NAME_PARTICLES.has(word));
+  if (parts.length === 0) return "";
+  const candidate = (parts.length > 1 ? `${parts[0]}.${parts.at(-1)}` : parts[0]).slice(0, 32).replace(/[._-]+$/, "");
   return isValidUsername(candidate) ? candidate : "";
+}
+
+/** Alternativas quando o usuário já existe: maria.souza2, maria.souza3… (sempre até 32 caracteres). */
+export function usernameAlternatives(base: string, count = 20): string[] {
+  return Array.from({ length: count }, (_, i) => {
+    const suffix = String(i + 2);
+    return `${base.slice(0, 32 - suffix.length).replace(/[._-]+$/, "")}${suffix}`;
+  });
 }
 
 export function usernameToAuthEmail(username: string, domain: string): string {
