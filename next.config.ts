@@ -11,7 +11,7 @@ const securityHeaders = [
 
 // Fontes do PDF: lidas do disco em tempo de execução, então precisam entrar
 // explicitamente no pacote das funções que geram PDF.
-const pdfFonts = ["./node_modules/@fontsource/{inter,arimo,tinos,lora}/files/*-latin-{400,700}-{normal,italic}.woff"];
+const pdfFonts = ["./assets/pdf-fonts/*.ttf"];
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,

@@ -2,11 +2,12 @@ import path from "node:path";
 import { Font } from "@react-pdf/renderer";
 import { FONT_KEYS } from "@/features/templates/document/constants";
 
-// Mesmas famílias do editor (licença OFL), a partir dos pacotes @fontsource
-// (WOFF, subconjunto latino — cobre todo o português).
+// Mesmas famílias do editor (licença OFL), dos pacotes @fontsource, convertidas
+// de WOFF para TTF no postinstall (scripts/build-pdf-fonts.mjs): a partir de
+// WOFF, o subconjunto embutido no PDF perdia letras em negrito na tela.
 // Os arquivos entram no deploy via outputFileTracingIncludes (next.config).
 
-const FONT_DIR = path.join(process.cwd(), "node_modules", "@fontsource");
+export const PDF_FONT_DIR = path.join(process.cwd(), "assets", "pdf-fonts");
 
 let registered = false;
 
@@ -14,7 +15,7 @@ export function registerPdfFonts() {
   if (registered) return;
   for (const family of FONT_KEYS) {
     const file = (weight: 400 | 700, style: "normal" | "italic") =>
-      path.join(FONT_DIR, family, "files", `${family}-latin-${weight}-${style}.woff`);
+      path.join(PDF_FONT_DIR, `${family}-latin-${weight}-${style}.ttf`);
     Font.register({
       family,
       fonts: [

@@ -48,3 +48,4 @@ next-env.d.ts
 
 # gerado no postinstall
 /public/pdfjs/
+/assets/pdf-fonts/

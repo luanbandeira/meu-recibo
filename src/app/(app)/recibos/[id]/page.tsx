@@ -30,7 +30,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps<"/
         back={{ href: "/recibos", label: "Meus recibos" }}
       />
 
-      {isNew && <Alert tone="success">Recibo {receipt.number} emitido e salvo.</Alert>}
+      {isNew && <Alert tone="success">Recibo {receipt.number} emitido e salvo. Agora é só compartilhar.</Alert>}
 
       <dl className="grid grid-cols-2 gap-3 rounded-2xl bg-white p-4 text-sm shadow-xs ring-1 ring-slate-200 sm:grid-cols-3">
         {receipt.amount_cents !== null && (
@@ -49,7 +49,13 @@ export default async function ReceiptPage({ params, searchParams }: PageProps<"/
         </div>
       </dl>
 
-      <ReceiptDocumentView receiptId={receipt.id} hasPdf={Boolean(current?.pdf_path)} fileName={current?.file_name ?? null} />
+      <ReceiptDocumentView
+        receiptId={receipt.id}
+        receiptNumber={receipt.number}
+        hasPdf={Boolean(current?.pdf_path)}
+        fileName={current?.file_name ?? null}
+        highlightShare={isNew}
+      />
     </div>
   );
 }
