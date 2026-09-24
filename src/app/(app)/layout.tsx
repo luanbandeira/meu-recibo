@@ -15,6 +15,7 @@ export default async function UserAppLayout({ children }: { children: React.Reac
           items={[
             { href: "/dashboard", label: "Início" },
             { href: "/emitir", label: "Emitir recibo" },
+            { href: "/recibos", label: "Meus recibos" },
             { href: "/modelos", label: "Modelos" },
             { href: "/perfil", label: "Perfil" },
           ]}

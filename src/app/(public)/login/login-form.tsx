@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { PasswordField, TextField } from "@/components/ui/text-field";
 import { isValidUsername, normalizeUsername, usernameToAuthEmail } from "@/features/auth/username";
 import { publicEnv } from "@/lib/env";
+import { clearAllDrafts } from "@/features/receipts/draft";
 import { createClient } from "@/lib/supabase/browser";
 
 function messageFor(code: string | undefined): string {
@@ -27,6 +28,9 @@ function messageFor(code: string | undefined): string {
 // por IP, e pelo servidor todos os usuários dividiriam os IPs da Vercel.
 export function LoginForm({ next, accountDisabled }: { next: string; accountDisabled: boolean }) {
   const router = useRouter();
+  // Chegou ao login (saiu, sessão expirou ou conta desativada): nenhum rascunho
+  // com dados de pacientes pode ficar para a próxima pessoa nesta aba.
+  useEffect(() => clearAllDrafts(), []);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(
     accountDisabled ? "Esta conta está desativada. Fale com o administrador." : null,
