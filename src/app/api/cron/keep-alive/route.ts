@@ -10,7 +10,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCron(request.headers.get("authorization"), process.env.CRON_SECRET)) {
-    return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+    // Diz só SE a chave está configurada (ajuda a diagnosticar), nunca qual é.
+    const reason = process.env.CRON_SECRET ? "chave ausente ou incorreta" : "CRON_SECRET não configurado neste deploy";
+    return NextResponse.json({ error: "Não autorizado.", reason }, { status: 401 });
   }
 
   const { error } = await createAdminClient().from("profiles").select("id", { count: "exact", head: true });
