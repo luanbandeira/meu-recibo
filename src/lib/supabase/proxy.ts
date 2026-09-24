@@ -3,7 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { publicEnv } from "@/lib/env";
 import { buildCsp, createNonce } from "@/lib/security/csp";
 
-const PUBLIC_PATHS = ["/login", "/auth/sair"];
+// /api/cron: chamado pela Vercel (sem sessão), protegido por CRON_SECRET.
+const PUBLIC_PATHS = ["/login", "/auth/sair", "/api/cron"];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
