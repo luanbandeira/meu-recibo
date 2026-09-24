@@ -78,8 +78,24 @@ describe("criação de usuário", () => {
     expect(profile).toEqual({ role: "user", must_change_password: true });
   });
 
-  it("recusa usuário sem username (criado fora do painel)", async () => {
-    await expect(db.query("insert into auth.users (raw_app_meta_data) values ('{}')")).rejects.toThrow();
+  it("usuário sem username (criado fora do painel) não recebe perfil", async () => {
+    const { rows } = await db.query<{ id: string }>(
+      "insert into auth.users (raw_app_meta_data) values ('{}') returning id");
+    const profiles = await db.query("select 1 from public.profiles where id = $1", [rows[0].id]);
+    expect(profiles.rows).toEqual([]);
+  });
+
+  it("cria o perfil quando o app_metadata chega depois do insert (fluxo real do Supabase Auth)", async () => {
+    const { rows } = await db.query<{ id: string }>(
+      `insert into auth.users (raw_app_meta_data) values ('{"provider":"email"}') returning id`);
+    await db.query(
+      `update auth.users set raw_app_meta_data = raw_app_meta_data || '{"username":"tardio","display_name":"T"}'
+       where id = $1`, [rows[0].id]);
+    const profile = await db.query("select username, role from public.profiles where id = $1", [rows[0].id]);
+    expect(profile.rows).toEqual([{ username: "tardio", role: "user" }]);
+    const fields = await db.query("select 1 from public.fields where user_id = $1", [rows[0].id]);
+    expect(fields.rows).toHaveLength(11);
+    await db.query("delete from auth.users where id = $1", [rows[0].id]);
   });
 });
 

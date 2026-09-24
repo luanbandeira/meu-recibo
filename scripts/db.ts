@@ -25,7 +25,7 @@ function supabase(args: string[], capture = false) {
 }
 
 if (command === "push") {
-  supabase(["db", "push", "--include-all"]);
+  supabase(["db", "push", "--include-all", "--yes", ...process.argv.slice(3)]);
 } else if (command === "types") {
   const types = supabase(["gen", "types", "typescript", "--schema", "public"], true);
   writeFileSync("src/types/database.ts", types);
