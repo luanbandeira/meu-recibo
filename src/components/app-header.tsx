@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BrandMark } from "@/components/brand";
-import { signOut } from "@/features/auth/actions";
+import { SignOutButton } from "@/components/sign-out-button";
 
 export function AppHeader({ homeHref, userLabel }: { homeHref: string; userLabel: string }) {
   return (
@@ -11,14 +11,7 @@ export function AppHeader({ homeHref, userLabel }: { homeHref: string; userLabel
         </Link>
         <div className="flex min-w-0 items-center gap-2">
           <span className="hidden truncate text-sm text-slate-600 sm:inline">{userLabel}</span>
-          <form action={signOut}>
-            <button
-              type="submit"
-              className="min-h-11 rounded-lg px-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
-            >
-              Sair
-            </button>
-          </form>
+          <SignOutButton />
         </div>
       </div>
     </header>

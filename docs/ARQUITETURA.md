@@ -73,7 +73,7 @@ USUÁRIO  (layout com bottom-nav no mobile / sidebar no desktop)
 /dashboard                     CTA "Emitir recibo", recibos do mês, últimos recibos
 /emitir                        escolher modelo
 /emitir/[templateId]           formulário gerado pelas variáveis do modelo
-/emitir/[templateId]/preview   PDF real renderizado (pdf.js) → "Voltar e corrigir" | "Gerar PDF"
+/emitir/[templateId]/previa    prévia fiel (Fase 5: HTML em pt; Fase 6: PDF real) → "Voltar e corrigir" | "Gerar PDF"
 /modelos                       lista (criar, duplicar, renomear, arquivar)
 /modelos/novo
 /modelos/[id]/editar           editor A4 + toolbar + autosave

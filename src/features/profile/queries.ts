@@ -25,6 +25,7 @@ export type ProfessionalProfile = {
   phone: string | null;
   city: string | null;
   state: UF | null;
+  timezone: string;
   onboarding_completed_at: string | null;
   logo: AssetRef | null;
   signature: AssetRef | null;
@@ -39,7 +40,7 @@ export const getProfessionalProfile = cache(async (userId: string): Promise<Prof
     .from("professional_profiles")
     .select(
       `user_id, full_name, company_name, profession, council, registration_number, document_type,
-       document_number, phone, city, state, onboarding_completed_at,
+       document_number, phone, city, state, timezone, onboarding_completed_at,
        logo:user_assets!professional_profiles_logo_fk(${ASSET_COLUMNS}),
        signature:user_assets!professional_profiles_signature_fk(${ASSET_COLUMNS})`,
     )

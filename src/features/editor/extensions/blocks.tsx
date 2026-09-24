@@ -1,7 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- imagens privadas com URL assinada temporária */
-
 import { Node } from "@tiptap/core";
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
 import type { ComponentType, ReactNode } from "react";
@@ -11,7 +9,12 @@ import {
   type HeaderLayout,
   type ImageSize,
 } from "@/features/templates/document/constants";
-import { headerLines } from "@/features/templates/document/profile-values";
+import {
+  HeaderBlockView,
+  LogoBlockView,
+  SignatureBlockView,
+  type BlockAlign,
+} from "@/features/templates/document/blocks-view";
 import { useEditorData } from "../editor-context";
 
 // Blocos especiais: sem posicionamento livre — só opções fechadas
@@ -25,8 +28,6 @@ declare module "@tiptap/core" {
   }
 }
 
-const alignClass = { left: "justify-start", center: "justify-center", right: "justify-end" } as const;
-type Align = keyof typeof alignClass;
 
 function BlockControls({ children, onRemove }: { children: ReactNode; onRemove: () => void }) {
   return (
@@ -62,56 +63,24 @@ function Choice<T extends string>({ value, options, onChange }: { value: T; opti
 }
 
 const sizeOptions = Object.fromEntries(Object.entries(IMAGE_SIZES).map(([k, v]) => [k, v.label])) as Record<ImageSize, string>;
-const alignOptions: Record<Align, string> = { left: "Esquerda", center: "Centro", right: "Direita" };
-
-function Placeholder({ children }: { children: ReactNode }) {
-  return (
-    <span className="rounded border border-dashed border-slate-300 px-3 py-2 font-sans text-[0.8em] text-slate-500">
-      {children}
-    </span>
-  );
-}
+const alignOptions: Record<BlockAlign, string> = { left: "Esquerda", center: "Centro", right: "Direita" };
 
 // ---------------------------------------------------------------------------
 
 function HeaderView({ node, selected, updateAttributes, deleteNode }: ReactNodeViewProps) {
   const { profile, assets } = useEditorData();
   const layout = node.attrs.layout as HeaderLayout;
-  const lines = headerLines(profile);
-  const showLogo = layout !== "no-logo";
-
-  const logo = showLogo ? (
-    assets.logoUrl ? (
-      <img src={assets.logoUrl} alt="" style={{ height: `calc(${IMAGE_SIZES.medium.logoPt} * var(--pt))` }} className="w-auto max-w-[35%] object-contain" />
-    ) : (
-      <Placeholder>Sua logo</Placeholder>
-    )
-  ) : null;
-
-  const text = (
-    <div className={layout === "logo-left" ? "text-left" : "text-center"}>
-      <div style={{ fontSize: "calc(18 * var(--pt))" }} className="font-bold leading-tight">
-        {lines.name}
-      </div>
-      {lines.company && <div style={{ fontSize: "calc(10 * var(--pt))" }}>{lines.company}</div>}
-      {lines.professionLine && <div style={{ fontSize: "calc(10.5 * var(--pt))" }}>{lines.professionLine}</div>}
-      {lines.contactLine && <div style={{ fontSize: "calc(10.5 * var(--pt))" }}>{lines.contactLine}</div>}
-    </div>
-  );
-
   return (
     <NodeViewWrapper
       className={`relative my-[calc(4*var(--pt))] rounded ${selected ? "outline-2 outline-offset-4 outline-brand-600" : "hover:outline-1 hover:outline-offset-4 hover:outline-slate-300"}`}
-      data-drag-handle=""
     >
       {selected && (
         <BlockControls onRemove={deleteNode}>
           <Choice value={layout} options={HEADER_LAYOUTS} onChange={(v) => updateAttributes({ layout: v })} />
         </BlockControls>
       )}
-      <div contentEditable={false} className={layout === "logo-left" ? "flex items-center gap-[calc(16*var(--pt))]" : "flex flex-col items-center gap-[calc(8*var(--pt))]"}>
-        {logo}
-        {text}
+      <div contentEditable={false}>
+        <HeaderBlockView layout={layout} profile={profile} assets={assets} />
       </div>
     </NodeViewWrapper>
   );
@@ -120,10 +89,9 @@ function HeaderView({ node, selected, updateAttributes, deleteNode }: ReactNodeV
 function LogoView({ node, selected, updateAttributes, deleteNode }: ReactNodeViewProps) {
   const { assets } = useEditorData();
   const size = node.attrs.size as ImageSize;
-  const align = node.attrs.align as Align;
-
+  const align = node.attrs.align as BlockAlign;
   return (
-    <NodeViewWrapper className={`relative my-[calc(4*var(--pt))] flex ${alignClass[align]} ${selected ? "outline-2 outline-offset-4 outline-brand-600" : ""}`}>
+    <NodeViewWrapper className={`relative my-[calc(4*var(--pt))] ${selected ? "outline-2 outline-offset-4 outline-brand-600" : ""}`}>
       {selected && (
         <BlockControls onRemove={deleteNode}>
           <Choice value={size} options={sizeOptions} onChange={(v) => updateAttributes({ size: v })} />
@@ -131,11 +99,7 @@ function LogoView({ node, selected, updateAttributes, deleteNode }: ReactNodeVie
         </BlockControls>
       )}
       <div contentEditable={false}>
-        {assets.logoUrl ? (
-          <img src={assets.logoUrl} alt="Logo" style={{ height: `calc(${IMAGE_SIZES[size].logoPt} * var(--pt))` }} className="w-auto object-contain" />
-        ) : (
-          <Placeholder>Logo (envie em Perfil)</Placeholder>
-        )}
+        <LogoBlockView size={size} align={align} assets={assets} />
       </div>
     </NodeViewWrapper>
   );
@@ -144,12 +108,10 @@ function LogoView({ node, selected, updateAttributes, deleteNode }: ReactNodeVie
 function SignatureView({ node, selected, updateAttributes, deleteNode }: ReactNodeViewProps) {
   const { assets, profile } = useEditorData();
   const size = node.attrs.size as ImageSize;
-  const align = node.attrs.align as Align;
+  const align = node.attrs.align as BlockAlign;
   const showName = Boolean(node.attrs.showName);
-  const lines = headerLines(profile);
-
   return (
-    <NodeViewWrapper className={`relative my-[calc(12*var(--pt))] flex ${alignClass[align]} ${selected ? "outline-2 outline-offset-4 outline-brand-600" : ""}`}>
+    <NodeViewWrapper className={`relative my-[calc(12*var(--pt))] ${selected ? "outline-2 outline-offset-4 outline-brand-600" : ""}`}>
       {selected && (
         <BlockControls onRemove={deleteNode}>
           <Choice value={size} options={sizeOptions} onChange={(v) => updateAttributes({ size: v })} />
@@ -160,18 +122,8 @@ function SignatureView({ node, selected, updateAttributes, deleteNode }: ReactNo
           </label>
         </BlockControls>
       )}
-      <div contentEditable={false} className="flex flex-col items-center" style={{ width: `calc(${IMAGE_SIZES[size].signaturePt + 60} * var(--pt))` }}>
-        {assets.signatureUrl ? (
-          <img src={assets.signatureUrl} alt="Assinatura" style={{ width: `calc(${IMAGE_SIZES[size].signaturePt} * var(--pt))` }} className="h-auto object-contain" />
-        ) : (
-          <Placeholder>Assinatura e carimbo (envie em Perfil)</Placeholder>
-        )}
-        {showName && (
-          <div className="mt-[calc(2*var(--pt))] w-full border-t border-slate-800 pt-[calc(2*var(--pt))] text-center" style={{ fontSize: "calc(10 * var(--pt))" }}>
-            <div className="font-semibold">{lines.name}</div>
-            {lines.professionLine && <div>{lines.professionLine}</div>}
-          </div>
-        )}
+      <div contentEditable={false}>
+        <SignatureBlockView size={size} align={align} showName={showName} profile={profile} assets={assets} />
       </div>
     </NodeViewWrapper>
   );
