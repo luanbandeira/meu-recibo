@@ -117,7 +117,7 @@ function SignerCard({
           />
           <label className="flex items-center gap-1.5 text-xs text-slate-700">
             <input type="checkbox" checked={signer.showName} onChange={(e) => onChange({ ...signer, showName: e.target.checked })} />
-            Nome e registro abaixo
+            Nome e CPF abaixo
           </label>
         </div>
       ) : (

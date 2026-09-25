@@ -1,7 +1,8 @@
 // Assinaturas do recibo: um bloco com 1 a 4 pessoas. Regras puras, usadas
 // igualmente pelo editor, pelo PDF e pelo formulário de emissão.
 //
-// - "Eu" (o profissional): nome e registro vêm do perfil; assina com a imagem
+// - "Eu" (o profissional): nome e CPF/CNPJ vêm do perfil (profissão e registro
+//   ficam no carimbo da imagem); assina com a imagem
 //   salva ("digital") ou fica a linha para assinar à mão ("manual"). Na
 //   emissão, a pessoa pode trocar digital → à mão só naquele recibo.
 // - "Outra pessoa": sempre à mão. O nome vem de um campo de emissão (ex.:

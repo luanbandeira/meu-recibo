@@ -13,7 +13,7 @@ import {
   type ImageSize,
   type TemplateSettings,
 } from "@/features/templates/document/constants";
-import { headerLines, type DocumentProfile } from "@/features/templates/document/profile-values";
+import { headerLines, signatureDocumentLine, type DocumentProfile } from "@/features/templates/document/profile-values";
 import {
   effectiveMeMode,
   signatureRows,
@@ -130,7 +130,7 @@ function signerLines(signer: Signer, profile: DocumentProfile, resolve: ReceiptD
     const lines = headerLines(profile);
     return {
       name: signer.showName ? lines.name : null,
-      detail: signer.showName ? lines.professionLine : null,
+      detail: signer.showName ? signatureDocumentLine(profile) : null,
       caption: signer.caption,
     };
   }

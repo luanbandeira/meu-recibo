@@ -38,6 +38,14 @@ export function headerLines(p: DocumentProfile) {
   };
 }
 
+/**
+ * Linha sob a SUA assinatura: só o documento ("CPF: …" / "CNPJ: …"). Profissão
+ * e registro não entram — já vêm no carimbo da imagem da assinatura.
+ */
+export function signatureDocumentLine(p: DocumentProfile): string | null {
+  return p.document_number ? `${p.document_type === "cnpj" ? "CNPJ" : "CPF"}: ${formatCpfCnpj(p.document_number)}` : null;
+}
+
 /** Valores das variáveis {{profissional_*}}. */
 export function profileVariableValues(p: DocumentProfile): Record<string, string> {
   return {

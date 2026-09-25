@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { IMAGE_SIZES, type HeaderLayout, type ImageSize } from "./constants";
-import { headerLines, type DocumentProfile } from "./profile-values";
+import { headerLines, signatureDocumentLine, type DocumentProfile } from "./profile-values";
 import { signatureRows, type Signer } from "./signatures";
 
 // Aparência dos blocos especiais — a MESMA no editor e na prévia.
@@ -130,7 +130,7 @@ export function SignatureBlockView({
                     : null;
             const detail =
               signer.who === "me"
-                ? signer.showName ? lines.professionLine : null
+                ? signer.showName ? signatureDocumentLine(profile) : null
                 : signer.documentKey ? `CPF/CNPJ: ${fieldPlaceholder(signer.documentKey, fieldLabels)}` : null;
             const showLine = !digital || !assets.signatureUrl || Boolean(name || detail || signer.caption);
             return [

@@ -127,8 +127,9 @@ describe("PDF do recibo", () => {
     const buffer = await renderReceiptPdf({ content, settings: DEFAULT_SETTINGS, profile, images, fields, values, receiptNumber: null, title: "t" });
     const { numPages, pages } = await extract(buffer);
     expect(numPages).toBeGreaterThan(1);
-    // Nome sob a assinatura aparece inteiro na última página.
-    expect(pages[numPages - 1]).toContain("Ana Souza Fictícia Fisioterapeuta - CREFITO-1 123456-F");
+    // Sob a assinatura: nome e CPF (profissão/registro ficam no carimbo), inteiros na última página.
+    expect(pages[numPages - 1]).toContain("Ana Souza Fictícia CPF: 529.982.247-25");
+    expect(pages[numPages - 1]).not.toContain("Fisioterapeuta");
   }, 30_000);
 });
 
