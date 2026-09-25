@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { MAX_CORRECTION_NOTE } from "./flow";
 import { generateAndAttachPdf } from "./pdf-service";
 import { getReceiptSource } from "./queries";
-import { buildSummary, emissionFields, validateValues, type RawValues } from "./values";
+import { buildSummary, emissionFields, validateValues, withSignatureMode, type RawValues } from "./values";
 import { RATE_LIMIT_MESSAGE, withinRateLimit } from "@/lib/security/rate-limit";
 
 const uuid = z.uuid();
@@ -49,7 +49,7 @@ export async function issueReceipt(input: {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("issue_receipt", {
     p_template_id: template.id,
-    p_values: validation.values,
+    p_values: withSignatureMode(validation.values, input.values, template.used_variables),
     p_summary: buildSummary(formFields, validation.values),
     p_idempotency_key: input.idempotencyKey,
   });
@@ -95,7 +95,7 @@ export async function correctReceipt(input: {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("correct_receipt", {
     p_receipt_id: source.id,
-    p_values: validation.values,
+    p_values: withSignatureMode(validation.values, input.values, source.usedVariables),
     p_summary: buildSummary(formFields, validation.values),
     p_note: note || null,
     p_idempotency_key: input.idempotencyKey,

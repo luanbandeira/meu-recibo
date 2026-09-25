@@ -14,6 +14,13 @@ import {
   type TemplateSettings,
 } from "@/features/templates/document/constants";
 import { headerLines, type DocumentProfile } from "@/features/templates/document/profile-values";
+import {
+  effectiveMeMode,
+  signatureRows,
+  signersOf,
+  type SignatureMode,
+  type Signer,
+} from "@/features/templates/document/signatures";
 
 /**
  * O recibo em PDF. Espelha o renderizador HTML da prévia/editor: mesmos
@@ -31,6 +38,8 @@ export type ReceiptDocumentProps = {
   profile: DocumentProfile;
   images: { logo: PdfImage | null; signature: PdfImage | null };
   resolve: (key: string, format?: "short" | "long" | null) => string;
+  /** Escolha feita na emissão para a SUA assinatura (digital ou à mão). */
+  signatureMode: SignatureMode;
   title: string;
 };
 
@@ -112,29 +121,86 @@ function Header({ layout, profile, logo, contentWidth }: { layout: HeaderLayout;
   );
 }
 
-function Signature({ attrs, profile, signature }: { attrs: Record<string, unknown> | undefined; profile: DocumentProfile; signature: PdfImage | null }) {
+const SIGN_SPACE_PT = 40; // altura livre para assinar à mão
+const SIGNATURE_GAP_PT = 24;
+
+/** Texto sob a linha de cada pessoa: nome, registro/documento e legenda. */
+function signerLines(signer: Signer, profile: DocumentProfile, resolve: ReceiptDocumentProps["resolve"]) {
+  if (signer.who === "me") {
+    const lines = headerLines(profile);
+    return {
+      name: signer.showName ? lines.name : null,
+      detail: signer.showName ? lines.professionLine : null,
+      caption: signer.caption,
+    };
+  }
+  const name =
+    signer.name.from === "field" ? resolve(signer.name.key) : signer.name.from === "text" ? signer.name.text : null;
+  const document = signer.documentKey ? resolve(signer.documentKey) : "";
+  return { name: name || null, detail: document ? `CPF/CNPJ: ${document}` : null, caption: signer.caption };
+}
+
+function SignatureBlock({
+  attrs,
+  props,
+  contentWidth,
+}: {
+  attrs: Record<string, unknown> | undefined;
+  props: ReceiptDocumentProps;
+  contentWidth: number;
+}) {
   const size = (attrs?.size as ImageSize) in IMAGE_SIZES ? (attrs?.size as ImageSize) : "medium";
   const align = (attrs?.align as keyof typeof justify) in justify ? (attrs?.align as keyof typeof justify) : "center";
-  const width = IMAGE_SIZES[size].signaturePt;
-  const lines = headerLines(profile);
+  const signers = signersOf(attrs);
+  const image = props.images.signature;
+  const rows = signatureRows(signers);
+  const perRow = rows[0].length;
+  const columnWidth = Math.min(IMAGE_SIZES[size].signaturePt + 60, (contentWidth - SIGNATURE_GAP_PT * (perRow - 1)) / perRow);
+  const imageSize = image ? fit(image, { width: Math.min(IMAGE_SIZES[size].signaturePt, columnWidth) }) : null;
+  const isDigital = (signer: Signer) =>
+    signer.who === "me" && effectiveMeMode(signer, props.signatureMode, Boolean(image)) === "digital";
 
   return (
-    // wrap={false}: a assinatura nunca é dividida entre páginas.
-    <View wrap={false} style={{ flexDirection: "row", justifyContent: justify[align], marginVertical: 12 }}>
-      <View style={{ width: width + 60, alignItems: "center" }}>
-        {signature ? (
-          // eslint-disable-next-line jsx-a11y/alt-text -- Image do react-pdf, não é <img>
-          <Image src={{ data: signature.data, format: signature.format }} style={fit(signature, { width })} />
-        ) : (
-          <View style={{ height: 40 }} />
-        )}
-        {Boolean(attrs?.showName) && (
-          <View style={{ width: "100%", borderTopWidth: 0.75, borderTopColor: "#1f2937", paddingTop: 2, marginTop: 2, alignItems: "center" }}>
-            <Text style={{ fontSize: 10, fontWeight: 700, lineHeight: 1.3 }}>{lines.name}</Text>
-            {lines.professionLine && <Text style={{ fontSize: 10, lineHeight: 1.3, textAlign: "center" }}>{lines.professionLine}</Text>}
+    // wrap={false}: o bloco de assinaturas nunca é dividido entre páginas.
+    <View wrap={false} style={{ marginVertical: 12 }}>
+      {rows.map((row, r) => {
+        const rowArea = Math.max(SIGN_SPACE_PT, ...row.map((signer) => (isDigital(signer) && imageSize ? imageSize.height : 0)));
+        return (
+          <View
+            key={r}
+            style={{
+              flexDirection: "row",
+              justifyContent: signers.length === 1 ? justify[align] : "space-around",
+              marginTop: r > 0 ? 20 : 0,
+            }}
+          >
+            {row.map((signer, i) => {
+              const digital = isDigital(signer);
+              const text = signerLines(signer, props.profile, props.resolve);
+              // Sem nada abaixo e assinatura digital: só a imagem (como sempre foi).
+              const showLine = !digital || Boolean(text.name || text.detail || text.caption);
+              return (
+                <View key={i} style={{ width: columnWidth, alignItems: "center" }}>
+                  {/* Mesma altura para todos da linha: as linhas de assinatura ficam alinhadas. */}
+                  <View style={{ height: rowArea, width: "100%", alignItems: "center", justifyContent: "flex-end" }}>
+                    {digital && image && imageSize && (
+                      // eslint-disable-next-line jsx-a11y/alt-text -- Image do react-pdf, não é <img>
+                      <Image src={{ data: image.data, format: image.format }} style={imageSize} />
+                    )}
+                  </View>
+                  {showLine && (
+                    <View style={{ width: "100%", borderTopWidth: 0.75, borderTopColor: "#1f2937", paddingTop: 2, marginTop: 2, alignItems: "center" }}>
+                      {text.name && <Text style={{ fontSize: 10, fontWeight: 700, lineHeight: 1.3, textAlign: "center" }}>{text.name}</Text>}
+                      {text.detail && <Text style={{ fontSize: 10, lineHeight: 1.3, textAlign: "center" }}>{text.detail}</Text>}
+                      {text.caption && <Text style={{ fontSize: 9, lineHeight: 1.3, textAlign: "center", color: "#4b5563" }}>{text.caption}</Text>}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
           </View>
-        )}
-      </View>
+        );
+      })}
     </View>
   );
 }
@@ -187,7 +253,7 @@ function Blocks({ nodes, props, contentWidth }: { nodes: Node[]; props: ReceiptD
         );
       }
       case "signature":
-        return <Signature key={i} attrs={node.attrs} profile={props.profile} signature={props.images.signature} />;
+        return <SignatureBlock key={i} attrs={node.attrs} props={props} contentWidth={contentWidth} />;
       default:
         return null;
     }

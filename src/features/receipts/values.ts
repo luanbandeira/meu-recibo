@@ -5,6 +5,7 @@
 import type { FieldDefinition, FieldType } from "@/features/templates/document/variables";
 import { emissionFieldKeys } from "@/features/templates/document/variables";
 import { profileVariableValues, type DocumentProfile } from "@/features/templates/document/profile-values";
+import { SIGNATURE_MODE_KEY, signatureModeOf } from "@/features/templates/document/signatures";
 import { formatCpfCnpj, formatPhone, isValidCnpj, isValidCpf, isValidPhone, onlyDigits } from "@/lib/format/br";
 import { centsToWords } from "@/lib/format/extenso";
 import { formatBRL, maskBRLInput } from "@/lib/format/money";
@@ -244,4 +245,17 @@ export function buildSummary(fields: FieldDefinition[], values: NormalizedValues
     service_date: dateField ? String(values[dateField.key]) : null,
     search_text: searchable(searchParts.join(" ")).slice(0, 4000),
   };
+}
+
+/** O modelo usa a SUA assinatura digital (e por isso a emissão oferece trocar por "à mão")? */
+export function offersSignatureChoice(usedVariables: string[]): boolean {
+  return usedVariables.includes("assinatura");
+}
+
+/**
+ * Guarda nos valores do recibo a escolha feita na emissão (digital ou à mão),
+ * só quando o modelo usa a sua assinatura digital. Qualquer outra coisa = digital.
+ */
+export function withSignatureMode(values: NormalizedValues, raw: Record<string, unknown>, usedVariables: string[]): NormalizedValues {
+  return offersSignatureChoice(usedVariables) ? { ...values, [SIGNATURE_MODE_KEY]: signatureModeOf(raw) } : values;
 }

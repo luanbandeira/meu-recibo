@@ -5,6 +5,7 @@ import { useEffect, useId, useState, useSyncExternalStore, type FormEvent } from
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
+import { SIGNATURE_MODE_KEY, signatureModeOf, type SignatureMode } from "@/features/templates/document/signatures";
 import type { FieldDefinition } from "@/features/templates/document/variables";
 import { clearDraft, parseDraft, readDraftRaw, writeDraft } from "../draft";
 import { flowPaths, type ReceiptFlow } from "../flow";
@@ -85,6 +86,7 @@ export function EmissionForm({
   fields,
   defaults,
   seed,
+  signatureChoice = false,
 }: {
   flow: ReceiptFlow;
   fields: FieldDefinition[];
@@ -92,6 +94,8 @@ export function EmissionForm({
   defaults: RawValues;
   /** Duplicar: substitui o rascunho desta aba pelos dados copiados. */
   seed?: { values: RawValues; notice: string };
+  /** O modelo usa a sua assinatura digital e há imagem no Perfil: deixa escolher "à mão" neste recibo. */
+  signatureChoice?: boolean;
 }) {
   const router = useRouter();
   const paths = flowPaths(flow);
@@ -125,6 +129,12 @@ export function EmissionForm({
         return next;
       });
     }
+  }
+
+  function setSignatureMode(mode: SignatureMode) {
+    const next = { ...values, [SIGNATURE_MODE_KEY]: mode };
+    setEdited(next);
+    writeDraft(draftId, next);
   }
 
   function onSubmit(event: FormEvent) {
@@ -198,6 +208,39 @@ export function EmissionForm({
         )}
         <p className="text-xs text-slate-500">* obrigatório</p>
       </div>
+
+      {signatureChoice && (
+        <fieldset className="flex flex-col gap-2 rounded-2xl bg-white p-5 shadow-xs ring-1 ring-slate-200 sm:p-6">
+          <legend className="sr-only">Sua assinatura neste recibo</legend>
+          <p aria-hidden="true" className="text-sm font-medium text-slate-800">
+            Sua assinatura neste recibo
+          </p>
+          {(
+            [
+              ["digital", "Assinatura digital", "Sai com a imagem da sua assinatura (do Perfil)."],
+              ["manual", "Para assinar à mão", "Sai só a linha com seu nome — você imprime e assina."],
+            ] as const
+          ).map(([mode, title, description]) => (
+            <label
+              key={mode}
+              className="flex cursor-pointer gap-3 rounded-xl p-3 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 has-checked:bg-brand-50 has-checked:ring-brand-300"
+            >
+              <input
+                type="radio"
+                name={SIGNATURE_MODE_KEY}
+                value={mode}
+                checked={signatureModeOf(values) === mode}
+                onChange={() => setSignatureMode(mode)}
+                className="mt-1 size-4 shrink-0 accent-brand-600"
+              />
+              <span>
+                <span className="block text-sm font-medium text-slate-900">{title}</span>
+                <span className="block text-sm text-slate-600">{description}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      )}
 
       {/* Ações fixas no rodapé do celular */}
       <div className="sticky bottom-20 z-10 flex flex-col gap-2 rounded-2xl bg-slate-50/95 py-2 backdrop-blur sm:static sm:flex-row sm:bg-transparent sm:py-0">

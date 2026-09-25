@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS, type TemplateSettings } from "./constants";
 import type { TemplateContent } from "./schema";
+import { ME_SIGNER, otherSigner, type Signer } from "./signatures";
 
 // Modelos prontos: o ponto de partida que a pessoa escolhe na configuração
 // inicial e em "Novo modelo". Depois de criado, é um modelo comum — cada conta
@@ -14,7 +15,12 @@ const t = (text: string) => ({ type: "text" as const, text });
 const amount = () => ({ ...v("valor"), marks: [{ type: "bold" as const }] });
 
 const header = { type: "professionalHeader" as const, attrs: { layout: "logo-left" as const } };
-const signature = { type: "signature" as const, attrs: { align: "center" as const, size: "medium" as const, showName: true } };
+const signatureBlock = (signers: Signer[]) => ({
+  type: "signature" as const,
+  attrs: { align: "center" as const, size: "medium" as const, showName: true, signers },
+});
+const signature = signatureBlock([ME_SIGNER]);
+const clientSigner = otherSigner({ name: { from: "field", key: "pagador" }, documentKey: "cpf_pagador", caption: "Cliente" });
 const title = (text: string) => ({
   type: "paragraph" as const,
   attrs: { textAlign: "center" as const },
@@ -40,6 +46,19 @@ export const SERVICE_TEMPLATE_CONTENT = doc(
   closing,
   placeAndDate,
   signature,
+);
+
+/** Serviço em que o cliente também assina (você digital, cliente à mão). */
+export const SERVICE_WITH_CLIENT_TEMPLATE_CONTENT = doc(
+  header,
+  title("RECIBO"),
+  body(
+    t("Recebi de "), v("pagador"), t(", CPF/CNPJ "), v("cpf_pagador"),
+    t(", a importância de "), amount(), t(" ("), v("valor_extenso"), t("), referente a "), v("descricao_servico"), t("."),
+  ),
+  closing,
+  placeAndDate,
+  signatureBlock([ME_SIGNER, clientSigner]),
 );
 
 export const HEALTH_TEMPLATE_CONTENT = doc(
@@ -73,7 +92,7 @@ export const SURGICAL_TEMPLATE_CONTENT = doc(
 
 export const BLANK_TEMPLATE_CONTENT = doc(header, { type: "paragraph" }, signature);
 
-export type TemplatePresetKey = "servico" | "saude" | "cirurgia" | "branco";
+export type TemplatePresetKey = "servico" | "servico_cliente" | "saude" | "cirurgia" | "branco";
 
 export type TemplatePreset = {
   key: TemplatePresetKey;
@@ -95,6 +114,14 @@ export const TEMPLATE_PRESETS: TemplatePreset[] = [
     audience: "Qualquer profissional autônomo",
     preview: "Recebi de [pagador], CPF/CNPJ [...], a importância de [valor] ([por extenso]), referente a [descrição do serviço].",
     content: SERVICE_TEMPLATE_CONTENT,
+  },
+  {
+    key: "servico_cliente",
+    name: "Recibo de serviço com assinatura do cliente",
+    title: "Serviço com assinatura do cliente",
+    audience: "Quando o cliente também assina o recibo",
+    preview: "Mesmo texto do serviço. Embaixo, duas assinaturas: a sua e a do cliente (nome e CPF/CNPJ), para assinar à mão.",
+    content: SERVICE_WITH_CLIENT_TEMPLATE_CONTENT,
   },
   {
     key: "saude",

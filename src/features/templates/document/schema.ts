@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_SIGNERS } from "./signatures";
 import {
   FONT_KEYS,
   FONT_SIZES,
@@ -108,8 +109,44 @@ const professionalHeader = z
 
 const logo = z.object({ type: z.literal("logo"), attrs: imageAttrs }).strict();
 
+// Pessoas que assinam (ver signatures.ts). Textos curtos, chaves no formato
+// das variáveis; nada de HTML.
+const caption = z.string().trim().max(60).nullable();
+const signerSchema = z.discriminatedUnion("who", [
+  z
+    .object({ who: z.literal("me"), mode: z.enum(["digital", "manual"]), showName: z.boolean(), caption })
+    .strict(),
+  z
+    .object({
+      who: z.literal("other"),
+      name: z.discriminatedUnion("from", [
+        z.object({ from: z.literal("field"), key: z.string().regex(VARIABLE_KEY_PATTERN) }).strict(),
+        z.object({ from: z.literal("text"), text: z.string().trim().max(120) }).strict(),
+        z.object({ from: z.literal("blank") }).strict(),
+      ]),
+      documentKey: z.string().regex(VARIABLE_KEY_PATTERN).nullable(),
+      caption,
+    })
+    .strict(),
+]);
+
 const signature = z
-  .object({ type: z.literal("signature"), attrs: imageAttrs.extend({ showName: z.boolean() }).strict() })
+  .object({
+    type: z.literal("signature"),
+    attrs: imageAttrs
+      .extend({
+        showName: z.boolean(),
+        // Ausente/null = bloco antigo: só você, digital.
+        signers: z
+          .array(signerSchema)
+          .min(1)
+          .max(MAX_SIGNERS)
+          .refine((list) => list.filter((s) => s.who === "me").length <= 1, "Só uma assinatura sua por bloco.")
+          .nullable()
+          .optional(),
+      })
+      .strict(),
+  })
   .strict();
 
 type ListNode = { type: "bulletList" | "orderedList"; attrs?: unknown; content: { type: "listItem"; content: unknown[] }[] };

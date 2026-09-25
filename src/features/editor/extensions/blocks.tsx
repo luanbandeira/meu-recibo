@@ -15,6 +15,8 @@ import {
   SignatureBlockView,
   type BlockAlign,
 } from "@/features/templates/document/blocks-view";
+import { DEFAULT_NEW_SIGNERS, signersOf } from "@/features/templates/document/signatures";
+import { SignersPanel } from "../components/signers-panel";
 import { useEditorData } from "../editor-context";
 
 // Blocos especiais: sem posicionamento livre — só opções fechadas
@@ -110,27 +112,28 @@ function LogoView({ node, selected: isSelected, editor, updateAttributes, delete
 }
 
 function SignatureView({ node, selected: isSelected, editor, updateAttributes, deleteNode }: ReactNodeViewProps) {
-  // Somente leitura (modo suporte): sem destaque nem controles de edição.
+  // Somente leitura (modo suporte): sem destaque nem painel de edição.
   const selected = isSelected && editor.isEditable;
-  const { assets, profile } = useEditorData();
+  const { assets, profile, catalog, fieldLabels } = useEditorData();
   const size = node.attrs.size as ImageSize;
   const align = node.attrs.align as BlockAlign;
-  const showName = Boolean(node.attrs.showName);
+  // Bloco antigo (sem lista) = só você, digital; vira lista explícita na primeira edição.
+  const signers = signersOf(node.attrs);
   return (
-    <NodeViewWrapper className={`relative my-[calc(12*var(--pt))] ${selected ? "outline-2 outline-offset-4 outline-brand-600" : ""}`}>
-      {selected && (
-        <BlockControls onRemove={deleteNode}>
-          <Choice value={size} options={sizeOptions} onChange={(v) => updateAttributes({ size: v })} />
-          <Choice value={align} options={alignOptions} onChange={(v) => updateAttributes({ align: v })} />
-          <label className="flex items-center gap-1 px-1">
-            <input type="checkbox" checked={showName} onChange={(e) => updateAttributes({ showName: e.target.checked })} />
-            Nome abaixo
-          </label>
-        </BlockControls>
-      )}
+    <NodeViewWrapper className={`relative my-[calc(12*var(--pt))] rounded ${selected ? "outline-2 outline-offset-4 outline-brand-600" : "hover:outline-1 hover:outline-offset-4 hover:outline-slate-300"}`}>
       <div contentEditable={false}>
-        <SignatureBlockView size={size} align={align} showName={showName} profile={profile} assets={assets} />
+        <SignatureBlockView size={size} align={align} signers={signers} profile={profile} assets={assets} fieldLabels={fieldLabels} />
       </div>
+      {selected && (
+        <SignersPanel
+          signers={signers}
+          size={size}
+          align={align}
+          catalog={catalog}
+          onChange={(patch) => updateAttributes(patch)}
+          onRemoveBlock={deleteNode}
+        />
+      )}
     </NodeViewWrapper>
   );
 }
@@ -161,13 +164,14 @@ function atomBlock(name: string, attrs: Record<string, unknown>, view: Component
 
 export const ProfessionalHeader = atomBlock("professionalHeader", { layout: "logo-left" }, HeaderView);
 export const LogoBlock = atomBlock("logo", { align: "left", size: "medium" }, LogoView);
-export const SignatureBlock = atomBlock("signature", { align: "center", size: "medium", showName: true }, SignatureView).extend({
+// signers: null = bloco antigo (só você). Blocos novos já nascem com 2 pessoas.
+export const SignatureBlock = atomBlock("signature", { align: "center", size: "medium", showName: true, signers: null }, SignatureView).extend({
   addCommands() {
     return {
       insertBlock:
         (type) =>
         ({ commands }) =>
-          commands.insertContent({ type }),
+          commands.insertContent(type === "signature" ? { type, attrs: { signers: DEFAULT_NEW_SIGNERS } } : { type }),
     };
   },
 });

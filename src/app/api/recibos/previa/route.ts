@@ -6,7 +6,7 @@ import { renderReceiptPdf } from "@/features/pdf/render";
 import { getProfessionalProfile } from "@/features/profile/queries";
 import { loadPdfImage, parseSettings } from "@/features/receipts/pdf-service";
 import { getReceiptSource } from "@/features/receipts/queries";
-import { emissionFields, validateValues } from "@/features/receipts/values";
+import { emissionFields, validateValues, withSignatureMode } from "@/features/receipts/values";
 import { getTemplate } from "@/features/templates/queries";
 import { RATE_LIMIT_MESSAGE, withinRateLimit } from "@/lib/security/rate-limit";
 
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     profile: professional,
     images: { logo, signature },
     fields,
-    values: validation.values,
+    values: withSignatureMode(validation.values, body.data.values, layout.usedVariables),
     receiptNumber: layout.receiptNumber,
     title: "Prévia do recibo",
   });

@@ -17,8 +17,8 @@ npx next typegen             # regenerate PageProps/LayoutProps/RouteContext aft
 npm test                     # unit + DB/RLS tests (PGlite, offline) — run before every commit
 npx vitest run tests/unit/history.test.ts         # single file
 npx vitest run tests/db -t "histórico"            # single describe/test by name
-npm run test:integration     # RLS isolation against the real DEV Supabase project (.env.local)
-npm run test:e2e             # Playwright (installed Chrome, 375px) against `npm run dev`; E2E_BASE_URL=<url> targets a deploy
+npm run test:integration     # RLS isolation against a real Supabase DEV project (.env.local); refuses production
+npm run test:e2e             # Playwright (installed Chrome, 375px) against `npm run dev`; E2E_BASE_URL=<url> targets a deploy; refuses production
 npm run db:push              # apply supabase/migrations to the DEV project (.env.local); refuses production
 npm run db:push:prod         # apply to PRODUCTION (.env.production.local) — only after testing in dev and with the user's go-ahead
 npm run admin:create -- --username <u> --name "<Nome>"   # bootstrap Super Admin
@@ -57,11 +57,36 @@ When a dev project exists, put its keys in `.env.local` and the guarded suites r
 - The preview is the real PDF: `POST /api/recibos/previa` returns bytes rendered with pdf.js (`features/pdf/pdf-viewer.tsx`). Saved PDFs are served only through `GET /api/recibos/[id]/pdf` using the user's session; there are never public storage URLs.
 - PDF fonts **must be TTF**. WOFF input made react-pdf drop bold glyphs on screen; `tests/unit/pdf-fonts.test.tsx` guards this. Fonts are read from disk, so routes that render PDFs need to be covered by `outputFileTracingIncludes` in `next.config.ts` (`/api/recibos/**`, `/emitir/**`, `/recibos/**`). `@react-pdf/renderer` is in `serverExternalPackages`.
 
+**Signatures.** The `signature` block holds 1–4 `signers` (`features/templates/document/signatures.ts`).
+- A signer is either "me" (the professional, digital image or a line to sign by hand) or "other" (always by hand; name from an emission field, fixed text, or blank; optional CPF/CNPJ field and caption).
+- Blocks without `signers` are legacy blocks and mean "just me, digital". Keep that working.
+- The editor, the PDF (`receipt-document.tsx`) and the emission form share these rules.
+- Fields used by other signers become emission fields (`extractVariables`).
+- At emission, a template that uses the digital "me" lets the user switch that receipt to "by hand". The choice is stored in the receipt values as `assinatura_modo`, a reserved key.
+
+**PDF text layer.** fontkit caches glyphs with the characters present when each glyph was first created, and an accented letter loads its base letter without one. That left later PDFs in the same server process with letters missing from copy/paste and search. The screen was fine. `features/pdf/font-warmup.tsx` lays out every character (unaccented first) once per process before the first receipt, and `tests/unit/pdf-text-layer.test.tsx` guards it.
+
+**Deleting data.**
+- **Receipt:** the owner deletes via the `delete_receipt` RPC, which removes the receipt and its versions and returns the PDF paths. The server then removes those files with the service role, because users have no Storage DELETE policy. Receipt numbers are **never reused**: the per-year counter only increases.
+- **User (LGPD):** the admin deletes via `features/admin/user-deletion.ts`, only for a *disabled* account, and only after the username is typed as confirmation. Order:
+  1. delete every Storage file listed by `admin_user_storage_objects`;
+  2. verify no file is left, and abort otherwise;
+  3. clear the user's rate-limit rows;
+  4. delete the auth user, which cascades to all tables and nulls the user's references in the audit log.
+
+**Audit.** `audit_logs` is append-only and written only by the server (`features/audit/log.ts`, service role). Actions are `admin.*` or the user's own `user.*`, such as `user.receipt.delete`. Metadata never contains personal data, only counts, receipt numbers and versions.
+
+**Starting templates.** `features/templates/document/default-template.ts` defines the presets: `servico` (default), `saude`, `cirurgia` and `branco`. Users pick one in the last onboarding step and in "Novo modelo". Each account stores its own copy, so editing the presets never changes existing templates.
+
+**Public routes and cron.** The proxy redirects anonymous requests to `/login` unless the path is in `PUBLIC_PATHS` (`src/lib/supabase/proxy.ts`), so any new public page, such as a landing page, must be added there. `/api/cron/keep-alive` runs daily through a Vercel Cron (`vercel.json`) so the free Supabase project never pauses. It is protected by `CRON_SECRET` (a Vercel env var) and only counts rows.
+
 **Support mode (admin, read-only).** A super admin with an open `support_sessions` row (30 min) sees the target user's app: `requireOnboardedUser()` then returns the target's `userId` plus `support`. It **rejects support mode by default**. Only read-only pages pass `{ allowSupport: true }` and must hide write UI when `support` is set. Server actions must never opt in. PDFs delivered to an admin are audited (`admin.support.view_pdf`). The audit screen uses the `admin_list_audit` RPC.
 
 **Security headers and limits.** The CSP with a per-request nonce is built in `src/lib/security/csp.ts` and set by the proxy. The root layout calls `connection()` so every page is dynamic and gets the nonce. Never add inline `<script>` or third-party script origins. Other headers live in `next.config.ts`. Abuse-prone actions and routes call `withinRateLimit(name, userId)` (`src/lib/security/rate-limit.ts`), which is DB-backed through the service-role-only RPC `rate_limit_hit`.
 
 **Client-side PII.** Emission and correction drafts (patient names, CPF) live only in `sessionStorage` (`features/receipts/draft.ts`), keyed by draft id. They are cleared on sign-out, on login mount and after issuing. Never move them to localStorage or the server.
+
+**Brand.** The app logo is `src/assets/brand/meurecibo-logo.png`, a transparent image meant for light backgrounds, rendered by `BrandMark` in `src/components/brand.tsx`. The favicon and app icons are `src/app/{favicon.ico,icon.png,apple-icon.png}`.
 
 **Images.** Uploads are validated by magic bytes (`features/assets/image-validation.ts`). Signature/stamp background removal is a custom adaptive threshold in `features/assets/background-removal.ts`.
 
@@ -70,12 +95,12 @@ When a dev project exists, put its keys in `.env.local` and the guarded suites r
 - `tests/unit/` holds pure logic and PDF rendering. PDF assertions extract text with pdfjs.
 - `tests/db/rls.test.ts` applies every migration to in-process PGlite with auth/storage stubs (`tests/db/supabase-stubs.sql`) and impersonates users via `request.jwt.claim.sub` + `set role authenticated`. Users added inside a `describe` must be deleted afterwards, because the admin tests count users.
 - `tests/e2e/` (Playwright + axe) creates `e2e-pw-*` accounts in global setup and deletes them, with their files and audit rows, in teardown. `fluxo.spec.ts` is serial, and `qualidade.spec.ts` runs after it (its rate-limit test must stay last).
-- `tests/integration/` hits the real DEV project. Test users are named `teste-(a|b|adm)-<hex>`, are tracked immediately on creation and are deleted in `afterAll` along with their audit rows.
+- `tests/integration/` hits a real DEV project and is blocked while `.env.local` points to production. Test users are named `teste-(a|b|adm)-<hex>`, are tracked immediately on creation and are deleted in `afterAll` along with their audit rows.
 
 ## Rules for this repo
 
 - Use only fictitious data (names, CPF, registration numbers) in code, tests, fixtures and examples. Do not suggest a specific profession as a form placeholder.
 - Never read or print real client data from production. Diagnose production only with aggregates or schema queries.
-- The owner's accounts (`luan`, `luciane`, `teste`) live in production. Never delete or modify them. Throwaway test users exist only in the dev project and must be named `e2e-*` or `teste-*`. Their cleanup must also remove Storage files, since deleting an auth user does not delete them.
+- Production holds `luan` (super admin), `teste` (the owner's test account) and `luciane` (a real client). Never delete or modify them. Change real production data (for example, fixing a client's template or counter) only when the user explicitly asks, with a targeted, verified script that reads `.env.production.local`. Throwaway test users exist only in the dev project and must be named `e2e-*` or `teste-*`. Their cleanup must also remove Storage files, since deleting an auth user does not delete them.
 - `SUPABASE_SECRET_KEY` and `SUPABASE_DB_URL` are server/local only. Never prefix them with `NEXT_PUBLIC_`, and never set `SUPABASE_DB_URL` on Vercel.
 - Commit/push only when the user approves. Pushing to `main` deploys.

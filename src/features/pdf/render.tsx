@@ -3,6 +3,8 @@ import { createResolver, type NormalizedValues } from "@/features/receipts/value
 import type { TemplateSettings } from "@/features/templates/document/constants";
 import type { DocumentProfile } from "@/features/templates/document/profile-values";
 import type { FieldDefinition } from "@/features/templates/document/variables";
+import { signatureModeOf } from "@/features/templates/document/signatures";
+import { warmPdfFonts } from "./font-warmup";
 import { registerPdfFonts } from "./fonts";
 import { ReceiptDocument, type PdfImage } from "./receipt-document";
 
@@ -20,6 +22,7 @@ export type RenderReceiptInput = {
 /** Gera o PDF do recibo (A4, texto vetorial, fontes embutidas). */
 export async function renderReceiptPdf(input: RenderReceiptInput): Promise<Buffer> {
   registerPdfFonts();
+  await warmPdfFonts();
   const resolver = createResolver({
     fields: input.fields,
     values: input.values,
@@ -33,6 +36,7 @@ export async function renderReceiptPdf(input: RenderReceiptInput): Promise<Buffe
       profile={input.profile}
       images={input.images}
       resolve={(key, format) => resolver(key, format).text}
+      signatureMode={signatureModeOf(input.values)}
       title={input.title}
     />,
   );

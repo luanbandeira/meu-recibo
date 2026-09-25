@@ -6,7 +6,8 @@ import { listFields } from "@/features/fields/queries";
 import { requireOnboardedUser } from "@/features/profile/guards";
 import { EmissionForm } from "@/features/receipts/components/emission-form";
 import { getReceiptSource } from "@/features/receipts/queries";
-import { emissionFields, initialRawValues, todayIso } from "@/features/receipts/values";
+import { emissionFields, initialRawValues, offersSignatureChoice, todayIso } from "@/features/receipts/values";
+import { SIGNATURE_MODE_KEY, signatureModeOf } from "@/features/templates/document/signatures";
 import { getTemplate } from "@/features/templates/queries";
 
 export const metadata: Metadata = { title: "Emitir recibo" };
@@ -39,7 +40,7 @@ export default async function EmitFormPage({ params, searchParams }: PageProps<"
     const copied = { ...source.values };
     delete copied.data_emissao;
     seed = {
-      values: initialRawValues(formFields, context, copied),
+      values: { ...initialRawValues(formFields, context, copied), [SIGNATURE_MODE_KEY]: signatureModeOf(source.values) },
       notice: `Dados copiados do recibo ${source.number}. Confira as datas e o valor antes de emitir.`,
     };
   }
@@ -51,7 +52,13 @@ export default async function EmitFormPage({ params, searchParams }: PageProps<"
         description={source ? "Novo recibo a partir de uma cópia." : "Preencha os dados deste recibo."}
         back={source ? { href: `/recibos/${source.id}`, label: "Recibo original" } : { href: "/emitir", label: "Modelos" }}
       />
-      <EmissionForm flow={{ kind: "issue", templateId: template.id }} fields={formFields} defaults={defaults} seed={seed} />
+      <EmissionForm
+        flow={{ kind: "issue", templateId: template.id }}
+        fields={formFields}
+        defaults={defaults}
+        seed={seed}
+        signatureChoice={offersSignatureChoice(template.used_variables) && Boolean(professional.signature)}
+      />
     </div>
   );
 }

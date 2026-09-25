@@ -1,3 +1,5 @@
+import { SIGNATURE_MODE_KEY, signatureFieldKeys, signersOf, usesDigitalSignature } from "./signatures";
+
 // Catálogo de variáveis dos modelos.
 //
 // - Campos de emissão: vêm da tabela `fields` do usuário (padrão + personalizados)
@@ -52,7 +54,7 @@ export function emissionFieldKeys(usedVariables: string[]): string[] {
 
 /** Chaves que o usuário não pode usar em campos personalizados. */
 export function isReservedKey(key: string) {
-  return key.startsWith("profissional_") || ["numero_recibo", "valor_extenso", "logo", "assinatura"].includes(key);
+  return key.startsWith("profissional_") || ["numero_recibo", "valor_extenso", "logo", "assinatura", SIGNATURE_MODE_KEY].includes(key);
 }
 
 export function buildCatalog(fields: FieldDefinition[]): CatalogVariable[] {
@@ -72,7 +74,9 @@ type Node = { type?: string; attrs?: Record<string, unknown>; content?: Node[] }
 
 /**
  * Variáveis e blocos especiais usados no documento, na ordem em que aparecem.
- * Blocos: `logo`, `assinatura` e o cabeçalho (que usa logo + dados do perfil).
+ * Blocos: `logo`, `assinatura` (só quando o bloco usa a SUA assinatura digital)
+ * e o cabeçalho (que usa logo + dados do perfil). Nomes e documentos de outras
+ * pessoas que assinam entram como campos de emissão.
  */
 export function extractVariables(doc: object): string[] {
   const found: string[] = [];
@@ -82,7 +86,11 @@ export function extractVariables(doc: object): string[] {
   const walk = (node: Node) => {
     if (node.type === "variable" && typeof node.attrs?.key === "string") add(node.attrs.key);
     if (node.type === "logo") add("logo");
-    if (node.type === "signature") add("assinatura");
+    if (node.type === "signature") {
+      const signers = signersOf(node.attrs);
+      if (usesDigitalSignature(signers)) add("assinatura");
+      signatureFieldKeys(signers).forEach(add);
+    }
     if (node.type === "professionalHeader" && node.attrs?.layout !== "no-logo") add("logo");
     node.content?.forEach(walk);
   };

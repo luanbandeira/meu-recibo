@@ -7,7 +7,8 @@ import { listFields } from "@/features/fields/queries";
 import { requireOnboardedUser } from "@/features/profile/guards";
 import { EmissionForm } from "@/features/receipts/components/emission-form";
 import { getReceiptSource } from "@/features/receipts/queries";
-import { emissionFields, initialRawValues, todayIso } from "@/features/receipts/values";
+import { emissionFields, initialRawValues, offersSignatureChoice, todayIso } from "@/features/receipts/values";
+import { SIGNATURE_MODE_KEY, signatureModeOf } from "@/features/templates/document/signatures";
 
 export const metadata: Metadata = { title: "Corrigir recibo" };
 
@@ -21,11 +22,10 @@ export default async function CorrectReceiptPage({ params }: PageProps<"/recibos
 
   // Campos do modelo usado na versão atual, preenchidos com os dados dela.
   const formFields = emissionFields(source.usedVariables, fields);
-  const defaults = initialRawValues(
-    formFields,
-    { today: todayIso(professional.timezone), city: professional.city },
-    source.values,
-  );
+  const defaults = {
+    ...initialRawValues(formFields, { today: todayIso(professional.timezone), city: professional.city }, source.values),
+    [SIGNATURE_MODE_KEY]: signatureModeOf(source.values),
+  };
   const nextVersion = source.versionNo + 1;
 
   return (
@@ -43,6 +43,7 @@ export default async function CorrectReceiptPage({ params }: PageProps<"/recibos
         flow={{ kind: "correct", receiptId: source.id, number: source.number, nextVersion }}
         fields={formFields}
         defaults={defaults}
+        signatureChoice={offersSignatureChoice(source.usedVariables) && Boolean(professional.signature)}
       />
     </div>
   );

@@ -3,7 +3,8 @@ import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { describe, expect, it } from "vitest";
 import { receiptFileName, renderReceiptPdf } from "@/features/pdf/render";
 import { DEFAULT_SETTINGS } from "@/features/templates/document/constants";
-import { SURGICAL_TEMPLATE_CONTENT } from "@/features/templates/document/default-template";
+import { SERVICE_WITH_CLIENT_TEMPLATE_CONTENT, SURGICAL_TEMPLATE_CONTENT } from "@/features/templates/document/default-template";
+import { ME_SIGNER, otherSigner } from "@/features/templates/document/signatures";
 import type { FieldDefinition, FieldType } from "@/features/templates/document/variables";
 
 // PNG mínimo válido (RGBA sólido) gerado aqui, para testar imagens no PDF.
@@ -153,4 +154,63 @@ describe("nome do arquivo", () => {
     const v12 = receiptFileName({ payer: long, date: "2026-01-01", number: "x", version: 12 });
     expect(v12).toMatch(/^[a-z0-9-]{1,80}-v12\.pdf$/);
   });
+});
+
+describe("PDF: assinaturas", () => {
+  const imageCount = (buffer: Buffer) => (buffer.toString("latin1").match(/\/Subtype\s*\/Image/g) ?? []).length;
+  const render = (content: object, extra: Record<string, string> = {}) =>
+    renderReceiptPdf({
+      content,
+      settings: DEFAULT_SETTINGS,
+      profile,
+      images: { logo: null, signature: images.signature },
+      fields: [...fields, field("descricao_servico", "long_text")],
+      values: { ...values, descricao_servico: "Consultoria", ...extra },
+      receiptNumber: "REC-2026-000001",
+      title: "t",
+    });
+
+  it("você (digital) + cliente: imagem da sua assinatura, nome/CPF do cliente e legenda", async () => {
+    const buffer = await render(SERVICE_WITH_CLIENT_TEMPLATE_CONTENT);
+    const { text } = await extract(buffer);
+    expect(text).toContain("Ana Souza Fictícia");
+    expect(text).toContain("José da Silva Fictício");
+    expect(text).toContain("CPF/CNPJ: 529.982.247-25");
+    expect(text).toContain("Cliente");
+    expect(imageCount(buffer)).toBeGreaterThan(0); // PNG com transparência = imagem + máscara
+  }, 30_000);
+
+  it("escolha 'à mão' na emissão: sem imagem, com a linha e o seu nome", async () => {
+    const buffer = await render(SERVICE_WITH_CLIENT_TEMPLATE_CONTENT, { assinatura_modo: "manual" });
+    expect(imageCount(buffer)).toBe(0);
+    expect((await extract(buffer)).text).toContain("Ana Souza Fictícia");
+  }, 30_000);
+
+  it("4 pessoas (campo, texto fixo, em branco, legendas) cabem numa página", async () => {
+    const content = {
+      type: "doc",
+      content: [
+        {
+          type: "signature",
+          attrs: {
+            align: "center",
+            size: "medium",
+            showName: true,
+            signers: [
+              ME_SIGNER,
+              otherSigner({ name: { from: "field", key: "paciente" }, documentKey: "cpf_paciente", caption: "Paciente" }),
+              otherSigner({ name: { from: "text", text: "Clínica Exemplo Ltda" }, caption: "Responsável" }),
+              otherSigner({ caption: "Testemunha" }),
+            ],
+          },
+        },
+      ],
+    };
+    const buffer = await render(content);
+    const { numPages, text } = await extract(buffer);
+    expect(numPages).toBe(1);
+    for (const piece of ["Maria Paciente Fictícia", "CPF/CNPJ: 111.444.777-35", "Clínica Exemplo Ltda", "Responsável", "Testemunha", "Paciente"]) {
+      expect(text).toContain(piece);
+    }
+  }, 30_000);
 });
