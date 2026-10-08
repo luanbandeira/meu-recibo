@@ -145,7 +145,7 @@ meu-recibo/
 **Solução:** e-mail sintético determinístico, invisível ao usuário.
 
 ```
-username "luciane"  →  luciane@login.meurecibo.internal
+username "mariana"  →  mariana@login.meurecibo.internal
 ```
 
 - `.internal` é TLD reservado pela ICANN para uso privado — nunca vai rotear e-mail.

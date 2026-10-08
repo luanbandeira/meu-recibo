@@ -15,7 +15,7 @@ describe("username", () => {
     expect(normalizeUsername("  Mariana ")).toBe("mariana");
   });
 
-  it.each(["luciane", "ana.paula", "joao_2", "m-s", "abc"])("aceita %s", (u) => {
+  it.each(["mariana", "ana.paula", "joao_2", "m-s", "abc"])("aceita %s", (u) => {
     expect(isValidUsername(u)).toBe(true);
   });
 

@@ -15,6 +15,7 @@
     "db:push:prod": "tsx scripts/db.ts push --producao",
     "db:types": "tsx scripts/db.ts types",
     "admin:create": "tsx scripts/create-admin.ts",
+    "seed": "node scripts/run-ts.mjs scripts/seed.ts",
     "test:db": "vitest run tests/db",
     "postinstall": "node scripts/copy-pdf-worker.mjs && node scripts/build-pdf-fonts.mjs",
     "test:e2e": "playwright test"
