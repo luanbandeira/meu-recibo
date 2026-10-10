@@ -54,3 +54,8 @@ next-env.d.ts
 /tests/e2e/.state.json
 /test-results/
 /playwright-report/
+
+# Instruções e configurações locais de assistentes de código (ficam só na máquina)
+CLAUDE.md
+AGENTS.md
+.claude/
